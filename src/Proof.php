@@ -2,15 +2,15 @@
 
 declare(strict_types=1);
 
-namespace ProofHoldings;
+namespace Proof;
 
-use ProofHoldings\Resources\Verifications;
-use ProofHoldings\Resources\VerificationRequests;
-use ProofHoldings\Resources\Proofs;
-use ProofHoldings\Resources\Sessions;
-use ProofHoldings\Resources\WebhookDeliveries;
+use Proof\Resources\Verifications;
+use Proof\Resources\VerificationRequests;
+use Proof\Resources\Proofs;
+use Proof\Resources\Sessions;
+use Proof\Resources\WebhookDeliveries;
 
-class ProofHoldings
+class Proof
 {
     private const string DEFAULT_BASE_URL = 'https://api.proof.holdings';
     private const float DEFAULT_TIMEOUT = 30.0;
@@ -29,7 +29,7 @@ class ProofHoldings
         int $maxRetries = self::DEFAULT_MAX_RETRIES,
     ) {
         if (empty($apiKey)) {
-            throw new \InvalidArgumentException('api_key is required');
+            throw new \InvalidArgumentException('api_key is required. Pass your key as: new Proof("pk_live_...")');
         }
 
         $http = new HttpClient($apiKey, $baseUrl, $timeout, $maxRetries);

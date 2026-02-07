@@ -2,14 +2,14 @@
 
 declare(strict_types=1);
 
-namespace ProofHoldings;
+namespace Proof;
 
 use GuzzleHttp\Client;
 use GuzzleHttp\Exception\ConnectException;
 use GuzzleHttp\Exception\RequestException;
-use ProofHoldings\Exceptions\NetworkException;
-use ProofHoldings\Exceptions\ProofHoldingsException;
-use ProofHoldings\Exceptions\TimeoutException;
+use Proof\Exceptions\NetworkException;
+use Proof\Exceptions\ProofException;
+use Proof\Exceptions\TimeoutException;
 
 class HttpClient
 {
@@ -103,7 +103,7 @@ class HttpClient
 
                 // Throw typed exception
                 $apiError = $responseBody['error'] ?? null;
-                throw ProofHoldingsException::fromResponse($statusCode, $apiError);
+                throw ProofException::fromResponse($statusCode, $apiError);
             } catch (ConnectException $e) {
                 $lastException = $e;
                 if (str_contains($e->getMessage(), 'timed out') || str_contains($e->getMessage(), 'timeout')) {

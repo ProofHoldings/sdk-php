@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace ProofHoldings\Exceptions;
+namespace Proof\Exceptions;
 
-class NetworkException extends ProofHoldingsException
+class NetworkException extends ProofException
 {
     public function __construct(string $message)
     {

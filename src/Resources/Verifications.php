@@ -2,14 +2,14 @@
 
 declare(strict_types=1);
 
-namespace ProofHoldings\Resources;
+namespace Proof\Resources;
 
-use ProofHoldings\HttpClient;
-use ProofHoldings\Polling;
+use Proof\HttpClient;
+use Proof\Polling;
 
 class Verifications
 {
-    private const array TERMINAL_STATES = ['verified', 'failed', 'expired', 'revoked'];
+    private const array TERMINAL_STATES = Polling::VERIFICATION_TERMINAL_STATES;
 
     public function __construct(private readonly HttpClient $http) {}
 

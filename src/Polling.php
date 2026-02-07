@@ -2,14 +2,19 @@
 
 declare(strict_types=1);
 
-namespace ProofHoldings;
+namespace Proof;
 
-use ProofHoldings\Exceptions\PollingTimeoutException;
+use Proof\Exceptions\PollingTimeoutException;
 
 class Polling
 {
     public const float DEFAULT_INTERVAL = 3.0;
     public const float DEFAULT_TIMEOUT = 600.0;
+    private const int MICROSECONDS_PER_SECOND = 1_000_000;
+
+    public const array VERIFICATION_TERMINAL_STATES = ['verified', 'failed', 'expired', 'revoked'];
+    public const array SESSION_TERMINAL_STATES = ['verified', 'failed', 'expired'];
+    public const array REQUEST_TERMINAL_STATES = ['completed', 'expired', 'cancelled'];
 
     /**
      * Poll a retrieve callback until the returned status is terminal or timeout is reached.
@@ -43,7 +48,7 @@ class Polling
                 );
             }
 
-            usleep((int) ($interval * 1_000_000));
+            usleep((int) ($interval * self::MICROSECONDS_PER_SECOND));
         }
     }
 }

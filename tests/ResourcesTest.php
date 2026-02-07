@@ -2,14 +2,14 @@
 
 declare(strict_types=1);
 
-namespace ProofHoldings\Tests;
+namespace Proof\Tests;
 
 use PHPUnit\Framework\TestCase;
-use ProofHoldings\HttpClient;
-use ProofHoldings\Resources\Verifications;
-use ProofHoldings\Resources\Sessions;
-use ProofHoldings\Resources\VerificationRequests;
-use ProofHoldings\Resources\WebhookDeliveries;
+use Proof\HttpClient;
+use Proof\Resources\Verifications;
+use Proof\Resources\Sessions;
+use Proof\Resources\VerificationRequests;
+use Proof\Resources\WebhookDeliveries;
 
 class ResourcesTest extends TestCase
 {
