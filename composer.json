@@ -1,9 +1,9 @@
 {
-    "name": "proof-holdings/sdk",
+    "name": "proof/sdk",
     "description": "Official PHP SDK for the proof.holdings verification API",
     "type": "library",
     "license": "MIT",
-    "keywords": ["proof-holdings", "verification", "sdk", "authentication", "api", "jwt"],
+    "keywords": ["proof", "verification", "sdk", "authentication", "api", "jwt"],
     "homepage": "https://proof.holdings",
     "require": {
         "php": ">=8.1",
@@ -17,12 +17,12 @@
     },
     "autoload": {
         "psr-4": {
-            "ProofHoldings\\": "src/"
+            "Proof\\": "src/"
         }
     },
     "autoload-dev": {
         "psr-4": {
-            "ProofHoldings\\Tests\\": "tests/"
+            "Proof\\Tests\\": "tests/"
         }
     },
     "config": {

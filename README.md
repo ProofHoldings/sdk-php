@@ -1,11 +1,11 @@
-# proof-holdings/sdk - PHP
+# proof/sdk - PHP
 
 Official PHP SDK for the [proof.holdings](https://proof.holdings) verification API.
 
 ## Installation
 
 ```bash
-composer require proof-holdings/sdk
+composer require proof/sdk
 ```
 
 For offline JWT verification:
@@ -17,9 +17,9 @@ composer require firebase/php-jwt
 ## Quick Start
 
 ```php
-use ProofHoldings\ProofHoldings;
+use Proof\Proof;
 
-$proof = new ProofHoldings('pk_live_...');
+$proof = new Proof('pk_live_...');
 
 // Create a phone verification
 $v = $proof->verifications->create([
@@ -115,12 +115,12 @@ $result = $proof->webhookDeliveries->retry('del_abc123');
 ## Error Handling
 
 ```php
-use ProofHoldings\ProofHoldings;
-use ProofHoldings\Exceptions\NotFoundException;
-use ProofHoldings\Exceptions\RateLimitException;
-use ProofHoldings\Exceptions\ProofHoldingsException;
+use Proof\Proof;
+use Proof\Exceptions\NotFoundException;
+use Proof\Exceptions\RateLimitException;
+use Proof\Exceptions\ProofException;
 
-$proof = new ProofHoldings('pk_live_...');
+$proof = new Proof('pk_live_...');
 
 try {
     $v = $proof->verifications->retrieve('nonexistent');
@@ -128,7 +128,7 @@ try {
     echo "Not found: {$e->errorCode}\n";
 } catch (RateLimitException $e) {
     echo "Rate limited, try again later\n";
-} catch (ProofHoldingsException $e) {
+} catch (ProofException $e) {
     echo "API error {$e->statusCode}: {$e->errorCode} - {$e->getMessage()}\n";
 }
 ```
@@ -136,7 +136,7 @@ try {
 ## Configuration
 
 ```php
-$proof = new ProofHoldings(
+$proof = new Proof(
     apiKey: 'pk_live_...',
     baseUrl: 'https://api.proof.holdings',  // Default
     timeout: 30.0,                           // Seconds, default 30

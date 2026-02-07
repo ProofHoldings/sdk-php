@@ -2,25 +2,25 @@
 
 declare(strict_types=1);
 
-namespace ProofHoldings\Tests;
+namespace Proof\Tests;
 
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
-use ProofHoldings\Exceptions\ProofHoldingsException;
-use ProofHoldings\Exceptions\ValidationException;
-use ProofHoldings\Exceptions\AuthenticationException;
-use ProofHoldings\Exceptions\ForbiddenException;
-use ProofHoldings\Exceptions\NotFoundException;
-use ProofHoldings\Exceptions\ConflictException;
-use ProofHoldings\Exceptions\RateLimitException;
-use ProofHoldings\Exceptions\ServerException;
+use Proof\Exceptions\ProofException;
+use Proof\Exceptions\ValidationException;
+use Proof\Exceptions\AuthenticationException;
+use Proof\Exceptions\ForbiddenException;
+use Proof\Exceptions\NotFoundException;
+use Proof\Exceptions\ConflictException;
+use Proof\Exceptions\RateLimitException;
+use Proof\Exceptions\ServerException;
 
 class ExceptionsTest extends TestCase
 {
     #[DataProvider('statusCodeProvider')]
     public function testFromResponseMapsStatusCodes(int $status, string $expectedClass): void
     {
-        $error = ProofHoldingsException::fromResponse($status);
+        $error = ProofException::fromResponse($status);
         $this->assertInstanceOf($expectedClass, $error);
     }
 
@@ -41,7 +41,7 @@ class ExceptionsTest extends TestCase
 
     public function testFromResponseWithBody(): void
     {
-        $error = ProofHoldingsException::fromResponse(400, [
+        $error = ProofException::fromResponse(400, [
             'code' => 'invalid_param',
             'message' => 'Bad input',
             'details' => ['field' => 'email'],
@@ -57,24 +57,24 @@ class ExceptionsTest extends TestCase
 
     public function testFromResponseDefaults(): void
     {
-        $error = ProofHoldingsException::fromResponse(418);
-        $this->assertInstanceOf(ProofHoldingsException::class, $error);
+        $error = ProofException::fromResponse(418);
+        $this->assertInstanceOf(ProofException::class, $error);
         $this->assertSame('http_418', $error->errorCode);
         $this->assertSame(418, $error->statusCode);
     }
 
     public function testExceptionHierarchy(): void
     {
-        $error = ProofHoldingsException::fromResponse(400);
+        $error = ProofException::fromResponse(400);
         $this->assertInstanceOf(\RuntimeException::class, $error);
-        $this->assertInstanceOf(ProofHoldingsException::class, $error);
+        $this->assertInstanceOf(ProofException::class, $error);
         $this->assertInstanceOf(ValidationException::class, $error);
     }
 
     public function testServerExceptionForAllServerCodes(): void
     {
         foreach ([500, 502, 503] as $status) {
-            $error = ProofHoldingsException::fromResponse($status);
+            $error = ProofException::fromResponse($status);
             $this->assertInstanceOf(ServerException::class, $error, "Status {$status} should be ServerException");
             $this->assertSame($status, $error->statusCode);
         }

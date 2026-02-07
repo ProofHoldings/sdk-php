@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace ProofHoldings\Exceptions;
+namespace Proof\Exceptions;
 
-class PollingTimeoutException extends ProofHoldingsException
+class PollingTimeoutException extends ProofException
 {
     public function __construct(string $message = 'Polling timed out waiting for completion')
     {

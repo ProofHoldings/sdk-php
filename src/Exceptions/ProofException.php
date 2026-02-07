@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace ProofHoldings\Exceptions;
+namespace Proof\Exceptions;
 
 use RuntimeException;
 
-class ProofHoldingsException extends RuntimeException
+class ProofException extends RuntimeException
 {
     public function __construct(
         string $message,
@@ -34,7 +34,7 @@ class ProofHoldingsException extends RuntimeException
             429 => new RateLimitException($message, $code, $details, $requestId),
             default => $statusCode >= 500
                 ? new ServerException($message, $code, $statusCode, $details, $requestId)
-                : new self($message, $code, $statusCode, $details, $requestId),
+                : new static($message, $code, $statusCode, $details, $requestId),
         };
     }
 }

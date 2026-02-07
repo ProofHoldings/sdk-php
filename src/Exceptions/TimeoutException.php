@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace ProofHoldings\Exceptions;
+namespace Proof\Exceptions;
 
-class TimeoutException extends ProofHoldingsException
+class TimeoutException extends ProofException
 {
     public function __construct(string $message = 'Request timed out')
     {

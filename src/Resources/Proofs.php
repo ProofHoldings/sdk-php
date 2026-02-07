@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace ProofHoldings\Resources;
+namespace Proof\Resources;
 
-use ProofHoldings\HttpClient;
+use Proof\HttpClient;
 
 class Proofs
 {
