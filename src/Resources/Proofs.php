@@ -33,6 +33,12 @@ class Proofs
         return $this->http->post('/api/v1/proofs/' . rawurlencode($id) . '/revoke', $body);
     }
 
+    /** Get the status of a proof by verification ID. */
+    public function status(string $id): array
+    {
+        return $this->http->get('/api/v1/proofs/' . rawurlencode($id) . '/status');
+    }
+
     public function listRevoked(): array
     {
         return $this->http->get('/api/v1/proofs/revoked');

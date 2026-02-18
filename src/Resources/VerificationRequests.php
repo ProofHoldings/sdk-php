@@ -28,6 +28,12 @@ class VerificationRequests
         return $this->http->get('/api/v1/verification-requests', $params);
     }
 
+    /** Get a verification request by its reference ID. */
+    public function getByReference(string $referenceId): array
+    {
+        return $this->http->get('/api/v1/verification-requests/by-reference/' . rawurlencode($referenceId));
+    }
+
     public function cancel(string $id): array
     {
         return $this->http->delete('/api/v1/verification-requests/' . rawurlencode($id));

@@ -31,7 +31,11 @@ class ProofException extends RuntimeException
             403 => new ForbiddenException($message, $code, $details, $requestId),
             404 => new NotFoundException($message, $code, $details, $requestId),
             409 => new ConflictException($message, $code, $details, $requestId),
-            429 => new RateLimitException($message, $code, $details, $requestId),
+            429 => new RateLimitException(
+                $message, $code, $details, $requestId,
+                isset($error['retryAfter']) ? (int) $error['retryAfter'] : null,
+                isset($error['remaining_attempts']) ? (int) $error['remaining_attempts'] : null,
+            ),
             default => $statusCode >= 500
                 ? new ServerException($message, $code, $statusCode, $details, $requestId)
                 : new static($message, $code, $statusCode, $details, $requestId),

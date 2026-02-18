@@ -38,6 +38,42 @@ class Verifications
         return $this->http->post('/api/v1/verifications/' . rawurlencode($id) . '/submit', ['code' => $code]);
     }
 
+    /** Resend a verification email (email channel only). */
+    public function resend(string $id): array
+    {
+        return $this->http->post('/api/v1/verifications/' . rawurlencode($id) . '/resend');
+    }
+
+    /** Auto-complete a verification in test mode (pk_test_* API keys only). */
+    public function testVerify(string $id): array
+    {
+        return $this->http->post('/api/v1/verifications/' . rawurlencode($id) . '/test-verify');
+    }
+
+    /** List verified users grouped by external_user_id. */
+    public function listVerifiedUsers(array $params = []): array
+    {
+        return $this->http->get('/api/v1/verifications/users', $params);
+    }
+
+    /** Get a single verified user's verifications by external user ID. */
+    public function getVerifiedUser(string $externalUserId): array
+    {
+        return $this->http->get('/api/v1/verifications/users/' . rawurlencode($externalUserId));
+    }
+
+    /** Start a B2B domain verification. */
+    public function startDomainVerification(array $params): array
+    {
+        return $this->http->post('/api/v1/verifications/domain', $params);
+    }
+
+    /** Check a pending domain verification (DNS/HTTP file). */
+    public function checkDomainVerification(string $id): array
+    {
+        return $this->http->post('/api/v1/verifications/domain/' . rawurlencode($id) . '/check');
+    }
+
     /**
      * Poll until verification reaches a terminal state.
      *

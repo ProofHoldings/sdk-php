@@ -71,6 +71,21 @@ class ExceptionsTest extends TestCase
         $this->assertInstanceOf(ValidationException::class, $error);
     }
 
+    public function testRateLimitWithLockoutFields(): void
+    {
+        $error = ProofException::fromResponse(429, [
+            'code' => 'auth_lockout',
+            'message' => 'Too many attempts',
+            'retryAfter' => 3600,
+            'remaining_attempts' => 0,
+        ]);
+
+        $this->assertInstanceOf(RateLimitException::class, $error);
+        $this->assertSame('auth_lockout', $error->errorCode);
+        $this->assertSame(3600, $error->retryAfter);
+        $this->assertSame(0, $error->remainingAttempts);
+    }
+
     public function testServerExceptionForAllServerCodes(): void
     {
         foreach ([500, 502, 503] as $status) {

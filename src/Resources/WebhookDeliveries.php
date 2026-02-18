@@ -10,6 +10,12 @@ class WebhookDeliveries
 {
     public function __construct(private readonly HttpClient $http) {}
 
+    /** Get webhook delivery statistics (totals, rates, recent failures). */
+    public function stats(): array
+    {
+        return $this->http->get('/api/v1/webhook-deliveries/stats');
+    }
+
     public function list(array $params = []): array
     {
         return $this->http->get('/api/v1/webhook-deliveries', $params);
