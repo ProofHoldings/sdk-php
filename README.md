@@ -1,11 +1,11 @@
-# proof/sdk - PHP
+# proof-holdings/sdk - PHP
 
 Official PHP SDK for the [proof.holdings](https://proof.holdings) verification API.
 
 ## Installation
 
 ```bash
-composer require proof/sdk
+composer require proof-holdings/sdk
 ```
 
 For offline JWT verification:
@@ -17,7 +17,7 @@ composer require firebase/php-jwt
 ## Quick Start
 
 ```php
-use Proof\Proof;
+use ProofHoldings\Proof;
 
 $proof = new Proof('pk_live_...');
 
@@ -115,10 +115,10 @@ $result = $proof->webhookDeliveries->retry('del_abc123');
 ## Error Handling
 
 ```php
-use Proof\Proof;
-use Proof\Exceptions\NotFoundException;
-use Proof\Exceptions\RateLimitException;
-use Proof\Exceptions\ProofException;
+use ProofHoldings\Proof;
+use ProofHoldings\Exceptions\NotFoundException;
+use ProofHoldings\Exceptions\RateLimitException;
+use ProofHoldings\Exceptions\ProofException;
 
 $proof = new Proof('pk_live_...');
 

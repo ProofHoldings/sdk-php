@@ -2,10 +2,18 @@
 
 declare(strict_types=1);
 
-namespace Proof\Resources;
+namespace ProofHoldings\Resources;
 
-use Proof\HttpClient;
-use Proof\Polling;
+use ProofHoldings\HttpClient;
+use ProofHoldings\Polling;
+use ProofHoldings\Types\DomainCheckResponse;
+use ProofHoldings\Types\DomainVerificationResponse;
+use ProofHoldings\Types\ResendVerificationResponse;
+use ProofHoldings\Types\TestVerifyResponse;
+use ProofHoldings\Types\Verification;
+use ProofHoldings\Types\VerificationListResponse;
+use ProofHoldings\Types\VerifiedUserDetail;
+use ProofHoldings\Types\VerifiedUserListResponse;
 
 class Verifications
 {
@@ -13,65 +21,76 @@ class Verifications
 
     public function __construct(private readonly HttpClient $http) {}
 
-    public function create(array $params): array
+    public function create(array $params): Verification
     {
-        return $this->http->post('/api/v1/verifications', $params);
+        $data = $this->http->post('/api/v1/verifications', $params);
+        return Verification::fromArray($data);
     }
 
-    public function retrieve(string $id): array
+    public function retrieve(string $id): Verification
     {
-        return $this->http->get('/api/v1/verifications/' . rawurlencode($id));
+        $data = $this->http->get('/api/v1/verifications/' . rawurlencode($id));
+        return Verification::fromArray($data);
     }
 
-    public function list(array $params = []): array
+    public function list(array $params = []): VerificationListResponse
     {
-        return $this->http->get('/api/v1/verifications', $params);
+        $data = $this->http->get('/api/v1/verifications', $params);
+        return VerificationListResponse::fromArray($data);
     }
 
-    public function verify(string $id): array
+    public function verify(string $id): Verification
     {
-        return $this->http->post('/api/v1/verifications/' . rawurlencode($id) . '/verify');
+        $data = $this->http->post('/api/v1/verifications/' . rawurlencode($id) . '/verify');
+        return Verification::fromArray($data);
     }
 
-    public function submit(string $id, string $code): array
+    public function submit(string $id, string $code): Verification
     {
-        return $this->http->post('/api/v1/verifications/' . rawurlencode($id) . '/submit', ['code' => $code]);
+        $data = $this->http->post('/api/v1/verifications/' . rawurlencode($id) . '/submit', ['code' => $code]);
+        return Verification::fromArray($data);
     }
 
     /** Resend a verification email (email channel only). */
-    public function resend(string $id): array
+    public function resend(string $id): ResendVerificationResponse
     {
-        return $this->http->post('/api/v1/verifications/' . rawurlencode($id) . '/resend');
+        $data = $this->http->post('/api/v1/verifications/' . rawurlencode($id) . '/resend');
+        return ResendVerificationResponse::fromArray($data);
     }
 
     /** Auto-complete a verification in test mode (pk_test_* API keys only). */
-    public function testVerify(string $id): array
+    public function testVerify(string $id): TestVerifyResponse
     {
-        return $this->http->post('/api/v1/verifications/' . rawurlencode($id) . '/test-verify');
+        $data = $this->http->post('/api/v1/verifications/' . rawurlencode($id) . '/test-verify');
+        return TestVerifyResponse::fromArray($data);
     }
 
     /** List verified users grouped by external_user_id. */
-    public function listVerifiedUsers(array $params = []): array
+    public function listVerifiedUsers(array $params = []): VerifiedUserListResponse
     {
-        return $this->http->get('/api/v1/verifications/users', $params);
+        $data = $this->http->get('/api/v1/verifications/users', $params);
+        return VerifiedUserListResponse::fromArray($data);
     }
 
     /** Get a single verified user's verifications by external user ID. */
-    public function getVerifiedUser(string $externalUserId): array
+    public function getVerifiedUser(string $externalUserId): VerifiedUserDetail
     {
-        return $this->http->get('/api/v1/verifications/users/' . rawurlencode($externalUserId));
+        $data = $this->http->get('/api/v1/verifications/users/' . rawurlencode($externalUserId));
+        return VerifiedUserDetail::fromArray($data);
     }
 
     /** Start a B2B domain verification. */
-    public function startDomainVerification(array $params): array
+    public function startDomainVerification(array $params): DomainVerificationResponse
     {
-        return $this->http->post('/api/v1/verifications/domain', $params);
+        $data = $this->http->post('/api/v1/verifications/domain', $params);
+        return DomainVerificationResponse::fromArray($data);
     }
 
     /** Check a pending domain verification (DNS/HTTP file). */
-    public function checkDomainVerification(string $id): array
+    public function checkDomainVerification(string $id): DomainCheckResponse
     {
-        return $this->http->post('/api/v1/verifications/domain/' . rawurlencode($id) . '/check');
+        $data = $this->http->post('/api/v1/verifications/domain/' . rawurlencode($id) . '/check');
+        return DomainCheckResponse::fromArray($data);
     }
 
     /**
@@ -80,14 +99,15 @@ class Verifications
      * @param float $interval Poll interval in seconds (default: 3.0)
      * @param float $timeout  Timeout in seconds (default: 600.0)
      */
-    public function waitForCompletion(string $id, float $interval = Polling::DEFAULT_INTERVAL, float $timeout = Polling::DEFAULT_TIMEOUT): array
+    public function waitForCompletion(string $id, float $interval = Polling::DEFAULT_INTERVAL, float $timeout = Polling::DEFAULT_TIMEOUT): Verification
     {
-        return Polling::waitUntilComplete(
-            fn () => $this->retrieve($id),
+        $data = Polling::waitUntilComplete(
+            fn () => $this->http->get('/api/v1/verifications/' . rawurlencode($id)),
             self::TERMINAL_STATES,
             "Verification {$id}",
             $interval,
             $timeout,
         );
+        return Verification::fromArray($data);
     }
 }

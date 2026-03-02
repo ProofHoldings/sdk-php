@@ -2,12 +2,12 @@
 
 declare(strict_types=1);
 
-namespace Proof\Tests;
+namespace ProofHoldings\Tests;
 
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
-use Proof\Polling;
-use Proof\Exceptions\PollingTimeoutException;
+use ProofHoldings\Polling;
+use ProofHoldings\Exceptions\PollingTimeoutException;
 
 class PollingTest extends TestCase
 {

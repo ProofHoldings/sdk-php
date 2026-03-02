@@ -2,14 +2,14 @@
 
 declare(strict_types=1);
 
-namespace Proof;
+namespace ProofHoldings;
 
 use GuzzleHttp\Client;
 use GuzzleHttp\Exception\ConnectException;
 use GuzzleHttp\Exception\RequestException;
-use Proof\Exceptions\NetworkException;
-use Proof\Exceptions\ProofException;
-use Proof\Exceptions\TimeoutException;
+use ProofHoldings\Exceptions\NetworkException;
+use ProofHoldings\Exceptions\ProofException;
+use ProofHoldings\Exceptions\TimeoutException;
 
 class HttpClient
 {
@@ -42,9 +42,19 @@ class HttpClient
         return $this->request('POST', $path, body: $body);
     }
 
-    public function delete(string $path): array
+    public function put(string $path, ?array $body = null): array
     {
-        return $this->request('DELETE', $path);
+        return $this->request('PUT', $path, body: $body);
+    }
+
+    public function patch(string $path, ?array $body = null): array
+    {
+        return $this->request('PATCH', $path, body: $body);
+    }
+
+    public function delete(string $path, ?array $body = null): array
+    {
+        return $this->request('DELETE', $path, body: $body);
     }
 
     private function request(string $method, string $path, ?array $body = null, array $query = []): array
@@ -65,7 +75,6 @@ class HttpClient
                 }
 
                 $response = $this->client->request($method, $path, $options);
-                $statusCode = $response->getStatusCode();
                 $responseBody = json_decode($response->getBody()->getContents(), true) ?: [];
 
                 return $responseBody;

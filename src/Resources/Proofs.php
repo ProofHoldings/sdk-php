@@ -2,9 +2,13 @@
 
 declare(strict_types=1);
 
-namespace Proof\Resources;
+namespace ProofHoldings\Resources;
 
-use Proof\HttpClient;
+use ProofHoldings\HttpClient;
+use ProofHoldings\Types\ProofStatusResponse;
+use ProofHoldings\Types\RevocationList;
+use ProofHoldings\Types\RevokeProofResponse;
+use ProofHoldings\Types\ValidateProofResponse;
 
 class Proofs
 {
@@ -15,33 +19,37 @@ class Proofs
         $this->jwksUrl = $http->baseUrl . '/.well-known/jwks.json';
     }
 
-    public function validate(string $proofToken, ?string $identifier = null): array
+    public function validate(string $proofToken, ?string $identifier = null): ValidateProofResponse
     {
         $body = ['proof_token' => $proofToken];
         if ($identifier !== null) {
             $body['identifier'] = $identifier;
         }
-        return $this->http->post('/api/v1/proofs/validate', $body);
+        $data = $this->http->post('/api/v1/proofs/validate', $body);
+        return ValidateProofResponse::fromArray($data);
     }
 
-    public function revoke(string $id, ?string $reason = null): array
+    public function revoke(string $id, ?string $reason = null): RevokeProofResponse
     {
         $body = [];
         if ($reason !== null) {
             $body['reason'] = $reason;
         }
-        return $this->http->post('/api/v1/proofs/' . rawurlencode($id) . '/revoke', $body);
+        $data = $this->http->post('/api/v1/proofs/' . rawurlencode($id) . '/revoke', $body);
+        return RevokeProofResponse::fromArray($data);
     }
 
     /** Get the status of a proof by verification ID. */
-    public function status(string $id): array
+    public function status(string $id): ProofStatusResponse
     {
-        return $this->http->get('/api/v1/proofs/' . rawurlencode($id) . '/status');
+        $data = $this->http->get('/api/v1/proofs/' . rawurlencode($id) . '/status');
+        return ProofStatusResponse::fromArray($data);
     }
 
-    public function listRevoked(): array
+    public function listRevoked(): RevocationList
     {
-        return $this->http->get('/api/v1/proofs/revoked');
+        $data = $this->http->get('/api/v1/proofs/revoked');
+        return RevocationList::fromArray($data);
     }
 
     /**
