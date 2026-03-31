@@ -2,46 +2,54 @@
 
 declare(strict_types=1);
 
-namespace Proof\Resources;
+namespace ProofHoldings\Resources;
 
-use Proof\HttpClient;
+use ProofHoldings\HttpClient;
+use ProofHoldings\Types\ProofStatusResponse;
+use ProofHoldings\Types\RevocationList;
+use ProofHoldings\Types\RevokeProofResponse;
+use ProofHoldings\Types\ValidateProofResponse;
 
 class Proofs
 {
     private string $jwksUrl;
+    /** @var array<string, \Firebase\JWT\Key>|null */
+    private ?array $cachedKeySet = null;
 
     public function __construct(private readonly HttpClient $http)
     {
         $this->jwksUrl = $http->baseUrl . '/.well-known/jwks.json';
     }
 
-    public function validate(string $proofToken, ?string $identifier = null): array
+    /** Validate a proof token online (checks revocation status). Public endpoint — no API key required. */
+    public function validate(string $proofToken): ValidateProofResponse
     {
         $body = ['proof_token' => $proofToken];
-        if ($identifier !== null) {
-            $body['identifier'] = $identifier;
-        }
-        return $this->http->post('/api/v1/proofs/validate', $body);
+        $data = $this->http->post('/api/v1/proofs/validate', $body);
+        return ValidateProofResponse::fromArray($data);
     }
 
-    public function revoke(string $id, ?string $reason = null): array
+    public function revoke(string $id, ?string $reason = null): RevokeProofResponse
     {
         $body = [];
         if ($reason !== null) {
             $body['reason'] = $reason;
         }
-        return $this->http->post('/api/v1/proofs/' . rawurlencode($id) . '/revoke', $body);
+        $data = $this->http->post('/api/v1/proofs/' . rawurlencode($id) . '/revoke', $body);
+        return RevokeProofResponse::fromArray($data);
     }
 
     /** Get the status of a proof by verification ID. */
-    public function status(string $id): array
+    public function status(string $id): ProofStatusResponse
     {
-        return $this->http->get('/api/v1/proofs/' . rawurlencode($id) . '/status');
+        $data = $this->http->get('/api/v1/proofs/' . rawurlencode($id) . '/status');
+        return ProofStatusResponse::fromArray($data);
     }
 
-    public function listRevoked(): array
+    public function listRevoked(): RevocationList
     {
-        return $this->http->get('/api/v1/proofs/revoked');
+        $data = $this->http->get('/api/v1/proofs/revoked');
+        return RevocationList::fromArray($data);
     }
 
     /**
@@ -59,16 +67,16 @@ class Proofs
         }
 
         try {
-            // Fetch JWKS
-            $jwksJson = file_get_contents($this->jwksUrl);
-            if ($jwksJson === false) {
-                return ['valid' => false, 'error' => 'Failed to fetch JWKS'];
+            if ($this->cachedKeySet === null) {
+                $jwksJson = file_get_contents($this->jwksUrl);
+                if ($jwksJson === false) {
+                    return ['valid' => false, 'error' => 'Failed to fetch JWKS'];
+                }
+                $jwks = json_decode($jwksJson, true);
+                $this->cachedKeySet = \Firebase\JWT\JWK::parseKeySet($jwks);
             }
 
-            $jwks = json_decode($jwksJson, true);
-            $keySet = \Firebase\JWT\JWK::parseKeySet($jwks);
-
-            $payload = \Firebase\JWT\JWT::decode($token, $keySet);
+            $payload = \Firebase\JWT\JWT::decode($token, $this->cachedKeySet);
             $payloadArray = (array) $payload;
 
             return [
@@ -88,5 +96,13 @@ class Proofs
         } catch (\Exception $e) {
             return ['valid' => false, 'error' => $e->getMessage()];
         }
+    }
+
+    /**
+     * Force-refresh the cached JWKS (e.g. after key rotation).
+     */
+    public function refreshJwks(): void
+    {
+        $this->cachedKeySet = null;
     }
 }

@@ -2,10 +2,11 @@
 
 declare(strict_types=1);
 
-namespace Proof\Resources;
+namespace ProofHoldings\Resources;
 
-use Proof\HttpClient;
-use Proof\Polling;
+use ProofHoldings\HttpClient;
+use ProofHoldings\Polling;
+use ProofHoldings\Types\Session;
 
 class Sessions
 {
@@ -13,24 +14,27 @@ class Sessions
 
     public function __construct(private readonly HttpClient $http) {}
 
-    public function create(array $params): array
+    public function create(array $params): Session
     {
-        return $this->http->post('/api/v1/sessions', $params);
+        $data = $this->http->post('/api/v1/sessions', $params);
+        return Session::fromArray($data);
     }
 
-    public function retrieve(string $id): array
+    public function retrieve(string $id): Session
     {
-        return $this->http->get('/api/v1/sessions/' . rawurlencode($id));
+        $data = $this->http->get('/api/v1/sessions/' . rawurlencode($id));
+        return Session::fromArray($data);
     }
 
-    public function waitForCompletion(string $id, float $interval = Polling::DEFAULT_INTERVAL, float $timeout = Polling::DEFAULT_TIMEOUT): array
+    public function waitForCompletion(string $id, float $interval = Polling::DEFAULT_INTERVAL, float $timeout = Polling::DEFAULT_TIMEOUT): Session
     {
-        return Polling::waitUntilComplete(
-            fn () => $this->retrieve($id),
+        $data = Polling::waitUntilComplete(
+            fn () => $this->http->get('/api/v1/sessions/' . rawurlencode($id)),
             self::TERMINAL_STATES,
             "Session {$id}",
             $interval,
             $timeout,
         );
+        return Session::fromArray($data);
     }
 }

@@ -1,5 +1,5 @@
 {
-    "name": "proof/sdk",
+    "name": "proof-holdings/sdk",
     "description": "Official PHP SDK for the proof.holdings verification API",
     "type": "library",
     "license": "MIT",
@@ -17,12 +17,15 @@
     },
     "autoload": {
         "psr-4": {
-            "Proof\\": "src/"
-        }
+            "ProofHoldings\\": "src/"
+        },
+        "classmap": [
+            "src/Types.php"
+        ]
     },
     "autoload-dev": {
         "psr-4": {
-            "Proof\\Tests\\": "tests/"
+            "ProofHoldings\\Tests\\": "tests/"
         }
     },
     "config": {

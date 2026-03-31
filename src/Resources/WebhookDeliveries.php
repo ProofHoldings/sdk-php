@@ -2,32 +2,40 @@
 
 declare(strict_types=1);
 
-namespace Proof\Resources;
+namespace ProofHoldings\Resources;
 
-use Proof\HttpClient;
+use ProofHoldings\HttpClient;
+use ProofHoldings\Types\RetryDeliveryResponse;
+use ProofHoldings\Types\WebhookDelivery;
+use ProofHoldings\Types\WebhookDeliveryListResponse;
+use ProofHoldings\Types\WebhookDeliveryStats;
 
 class WebhookDeliveries
 {
     public function __construct(private readonly HttpClient $http) {}
 
     /** Get webhook delivery statistics (totals, rates, recent failures). */
-    public function stats(): array
+    public function stats(): WebhookDeliveryStats
     {
-        return $this->http->get('/api/v1/webhook-deliveries/stats');
+        $data = $this->http->get('/api/v1/webhook-deliveries/stats');
+        return WebhookDeliveryStats::fromArray($data);
     }
 
-    public function list(array $params = []): array
+    public function list(array $params = []): WebhookDeliveryListResponse
     {
-        return $this->http->get('/api/v1/webhook-deliveries', $params);
+        $data = $this->http->get('/api/v1/webhook-deliveries', $params);
+        return WebhookDeliveryListResponse::fromArray($data);
     }
 
-    public function retrieve(string $id): array
+    public function retrieve(string $id): WebhookDelivery
     {
-        return $this->http->get('/api/v1/webhook-deliveries/' . rawurlencode($id));
+        $data = $this->http->get('/api/v1/webhook-deliveries/' . rawurlencode($id));
+        return WebhookDelivery::fromArray($data);
     }
 
-    public function retry(string $id): array
+    public function retry(string $id): RetryDeliveryResponse
     {
-        return $this->http->post('/api/v1/webhook-deliveries/' . rawurlencode($id) . '/retry');
+        $data = $this->http->post('/api/v1/webhook-deliveries/' . rawurlencode($id) . '/retry');
+        return RetryDeliveryResponse::fromArray($data);
     }
 }

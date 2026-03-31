@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Proof\Exceptions;
+namespace ProofHoldings\Exceptions;
 
 class TimeoutException extends ProofException
 {

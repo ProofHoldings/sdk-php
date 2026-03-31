@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Proof;
+namespace ProofHoldings;
 
 final class Version
 {
