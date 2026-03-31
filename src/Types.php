@@ -2309,6 +2309,7 @@ class Hitl
 {
     public function __construct(
         public readonly string $id,
+        public readonly mixed $user_id,
         public readonly array $channels,
         public readonly int $timeout_seconds,
         public readonly string $status,
@@ -2328,6 +2329,7 @@ class Hitl
     {
         return new self(
             id: $data['id'],
+            user_id: $data['user_id'],
             channels: $data['channels'],
             timeout_seconds: $data['timeout_seconds'],
             status: $data['status'],
