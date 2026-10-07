@@ -1,5 +1,5 @@
 {
-    "name": "proof/sdk",
+    "name": "proof-holdings/sdk",
     "description": "Official PHP SDK for the proof.holdings verification API",
     "type": "library",
     "license": "MIT",
@@ -10,19 +10,23 @@
         "guzzlehttp/guzzle": "^7.5"
     },
     "require-dev": {
+        "firebase/php-jwt": "^7.0",
         "phpunit/phpunit": "^13.0"
     },
     "suggest": {
-        "firebase/php-jwt": "Required for offline proof verification (^6.0)"
+        "firebase/php-jwt": "Required for offline proof verification (^7.0 — every 6.x release carries a security advisory)"
     },
     "autoload": {
         "psr-4": {
-            "Proof\\": "src/"
-        }
+            "ProofHoldings\\": "src/"
+        },
+        "classmap": [
+            "src/Types.php"
+        ]
     },
     "autoload-dev": {
         "psr-4": {
-            "Proof\\Tests\\": "tests/"
+            "ProofHoldings\\Tests\\": "tests/"
         }
     },
     "config": {

@@ -2,10 +2,11 @@
 
 declare(strict_types=1);
 
-namespace Proof\Resources;
+namespace ProofHoldings\Resources;
 
-use Proof\HttpClient;
-use Proof\Polling;
+use ProofHoldings\HttpClient;
+use ProofHoldings\Polling;
+use ProofHoldings\Streaming;
 
 class Verifications
 {
@@ -21,6 +22,18 @@ class Verifications
     public function retrieve(string $id): array
     {
         return $this->http->get('/api/v1/verifications/' . rawurlencode($id));
+    }
+
+    /** Create a multi-channel verification group (one phone offered across several channels; first completed channel wins). */
+    public function createMultiChannel(array $params): array
+    {
+        return $this->http->post('/api/v1/verifications/multi-channel', $params);
+    }
+
+    /** Get multi-channel group status (poll until verified/expired; proof is present when verified). */
+    public function getMultiChannelStatus(string $groupId): array
+    {
+        return $this->http->get('/api/v1/verifications/multi-channel/' . rawurlencode($groupId) . '/status');
     }
 
     public function list(array $params = []): array
@@ -77,17 +90,46 @@ class Verifications
     /**
      * Poll until verification reaches a terminal state.
      *
-     * @param float $interval Poll interval in seconds (default: 3.0)
-     * @param float $timeout  Timeout in seconds (default: 600.0)
+     * Uses exponential backoff with jitter per the standard polling contract.
+     * Pass a ``$shouldCancel`` callback returning true to abort early.
      */
-    public function waitForCompletion(string $id, float $interval = Polling::DEFAULT_INTERVAL, float $timeout = Polling::DEFAULT_TIMEOUT): array
+    /**
+     * Stream verification status via SSE with polling fallback.
+     * Endpoint: GET /api/v1/verifications/:id/events
+     *
+     * @return \Generator<int, array{event: string, id: ?string, data: mixed}>
+     */
+    public function stream(string $id, ?callable $shouldCancel = null): \Generator
     {
+        return Streaming::streamEndpoint(
+            $this->http,
+            '/api/v1/verifications/' . rawurlencode($id) . '/events',
+            fn () => $this->retrieve($id),
+            self::TERMINAL_STATES,
+            "Verification {$id}",
+            $shouldCancel,
+        );
+    }
+
+    public function waitForCompletion(
+        string $id,
+        float $interval = Polling::DEFAULT_INTERVAL,
+        float $timeout = Polling::DEFAULT_TIMEOUT,
+        float $backoff = Polling::DEFAULT_BACKOFF,
+        float $maxInterval = Polling::DEFAULT_MAX_INTERVAL,
+        float $jitter = Polling::DEFAULT_JITTER,
+        ?callable $shouldCancel = null,
+    ): array {
         return Polling::waitUntilComplete(
             fn () => $this->retrieve($id),
             self::TERMINAL_STATES,
             "Verification {$id}",
             $interval,
             $timeout,
+            $backoff,
+            $maxInterval,
+            $jitter,
+            $shouldCancel,
         );
     }
 }

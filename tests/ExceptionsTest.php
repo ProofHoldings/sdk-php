@@ -2,18 +2,18 @@
 
 declare(strict_types=1);
 
-namespace Proof\Tests;
+namespace ProofHoldings\Tests;
 
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
-use Proof\Exceptions\ProofException;
-use Proof\Exceptions\ValidationException;
-use Proof\Exceptions\AuthenticationException;
-use Proof\Exceptions\ForbiddenException;
-use Proof\Exceptions\NotFoundException;
-use Proof\Exceptions\ConflictException;
-use Proof\Exceptions\RateLimitException;
-use Proof\Exceptions\ServerException;
+use ProofHoldings\Exceptions\ProofException;
+use ProofHoldings\Exceptions\ValidationException;
+use ProofHoldings\Exceptions\AuthenticationException;
+use ProofHoldings\Exceptions\ForbiddenException;
+use ProofHoldings\Exceptions\NotFoundException;
+use ProofHoldings\Exceptions\ConflictException;
+use ProofHoldings\Exceptions\RateLimitException;
+use ProofHoldings\Exceptions\ServerException;
 
 class ExceptionsTest extends TestCase
 {

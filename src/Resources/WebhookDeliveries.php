@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace Proof\Resources;
+namespace ProofHoldings\Resources;
 
-use Proof\HttpClient;
+use ProofHoldings\HttpClient;
 
 class WebhookDeliveries
 {

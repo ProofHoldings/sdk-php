@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace Proof\Resources;
+namespace ProofHoldings\Resources;
 
-use Proof\HttpClient;
-use Proof\Polling;
+use ProofHoldings\HttpClient;
+use ProofHoldings\Polling;
 
 class Sessions
 {
@@ -23,14 +23,25 @@ class Sessions
         return $this->http->get('/api/v1/sessions/' . rawurlencode($id));
     }
 
-    public function waitForCompletion(string $id, float $interval = Polling::DEFAULT_INTERVAL, float $timeout = Polling::DEFAULT_TIMEOUT): array
-    {
+    public function waitForCompletion(
+        string $id,
+        float $interval = Polling::DEFAULT_INTERVAL,
+        float $timeout = Polling::DEFAULT_TIMEOUT,
+        float $backoff = Polling::DEFAULT_BACKOFF,
+        float $maxInterval = Polling::DEFAULT_MAX_INTERVAL,
+        float $jitter = Polling::DEFAULT_JITTER,
+        ?callable $shouldCancel = null,
+    ): array {
         return Polling::waitUntilComplete(
             fn () => $this->retrieve($id),
             self::TERMINAL_STATES,
             "Session {$id}",
             $interval,
             $timeout,
+            $backoff,
+            $maxInterval,
+            $jitter,
+            $shouldCancel,
         );
     }
 }
