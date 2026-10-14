@@ -17,7 +17,7 @@ composer require "firebase/php-jwt:^7.0"
 ## Quick Start
 
 ```php
-use Proof\Proof;
+use ProofHoldings\Proof;
 
 $proof = new Proof('pk_live_...');
 
@@ -160,10 +160,10 @@ $result = $proof->webhookDeliveries->retry('del_abc123');
 ## Error Handling
 
 ```php
-use Proof\Proof;
-use Proof\Exceptions\NotFoundException;
-use Proof\Exceptions\RateLimitException;
-use Proof\Exceptions\ProofException;
+use ProofHoldings\Proof;
+use ProofHoldings\Exceptions\NotFoundException;
+use ProofHoldings\Exceptions\RateLimitException;
+use ProofHoldings\Exceptions\ProofException;
 
 $proof = new Proof('pk_live_...');
 
@@ -190,8 +190,29 @@ $proof = new Proof(
 );
 ```
 
+## Credentials
+
+Sign in once with `npx @proof-holdings/mcp-server login` and construct the client with no key:
+
+```php
+$proof = new Proof();                        // or new Proof(baseUrl: '...')
+```
+
+When the key argument is omitted it is resolved in this order:
+
+1. `PROOF_API_KEY`, when set and non-empty.
+2. The entry for this client's base URL in `~/.proof-holdings/credentials`, the file the login
+   command writes. The file is keyed by base URL, so a key saved against staging is never sent
+   to production.
+3. Otherwise construction throws `InvalidArgumentException`, naming the three roads: pass the
+   key, set `PROOF_API_KEY`, or run `npx @proof-holdings/mcp-server login`.
+
+The base URL is the `baseUrl` argument, else a non-empty `PROOF_BASE_URL`, else
+`https://api.proof.holdings`. An explicit key is used as given, and an explicit empty key
+(`new Proof('')`) is an error — neither reads the environment or the file.
+
 ## Requirements
 
-- PHP >= 8.1
-- guzzlehttp/guzzle >= 7.5
+- PHP >= 8.3 (the SDK uses typed class constants)
+- guzzlehttp/guzzle >= 7.15.2
 - firebase/php-jwt ^7.0 (optional, for offline verification — every 6.x release carries a security advisory)

@@ -49,18 +49,30 @@ class Proof
     public readonly Circles $circles;
     public readonly Delegations $delegations;
 
+    /**
+     * With a key it is used as given. Without one — `new Proof()` — it is resolved the way
+     * `npx @proof-holdings/mcp-server login` expects: a non-empty `PROOF_API_KEY`, else the entry
+     * saved for this client's base URL in `~/.proof-holdings/credentials`. An explicit empty key
+     * is an error and never reads either. The base URL is the explicit argument, else a non-empty
+     * `PROOF_BASE_URL`, else the default.
+     */
     public function __construct(
-        string $apiKey,
-        string $baseUrl = self::DEFAULT_BASE_URL,
+        ?string $apiKey = null,
+        ?string $baseUrl = null,
         float $timeout = self::DEFAULT_TIMEOUT,
         int $maxRetries = self::DEFAULT_MAX_RETRIES,
         int|float $maxJwksAge = KeySetCache::DEFAULT_MAX_JWKS_AGE_SECONDS,
     ) {
-        if (empty($apiKey)) {
+        $resolvedBaseUrl = Credentials::resolveBaseUrl($baseUrl);
+        if ($apiKey !== null && $apiKey === '') {
             throw new \InvalidArgumentException('api_key is required. Pass your key as: new Proof("pk_live_...")');
         }
+        $resolved = Credentials::resolveApiKey($apiKey, $resolvedBaseUrl);
+        if ($resolved->apiKey === null || $resolved->apiKey === '') {
+            throw new \InvalidArgumentException(Credentials::missingKeyMessage($resolvedBaseUrl, $resolved->notice));
+        }
 
-        $http = new HttpClient($apiKey, $baseUrl, $timeout, $maxRetries);
+        $http = new HttpClient($resolved->apiKey, $resolvedBaseUrl, $timeout, $maxRetries);
 
         $this->verifications = new Verifications($http);
         $this->verificationRequests = new VerificationRequests($http);

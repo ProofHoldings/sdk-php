@@ -6,8 +6,8 @@
     "keywords": ["proof", "verification", "sdk", "authentication", "api", "jwt"],
     "homepage": "https://proof.holdings",
     "require": {
-        "php": ">=8.1",
-        "guzzlehttp/guzzle": "^7.5"
+        "php": ">=8.3",
+        "guzzlehttp/guzzle": "^7.15.2"
     },
     "require-dev": {
         "firebase/php-jwt": "^7.0",

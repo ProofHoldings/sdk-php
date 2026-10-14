@@ -212,6 +212,200 @@ class SuccessResponse
 // Other
 // ============================================================================
 
+/**
+ * The emailed cancel link still acts; nothing was changed by this read
+ */
+class AccountDeletionCancelTokenCheck
+{
+    public function __construct(
+        public readonly string $valid,
+        public readonly string $state,
+        public readonly ?string $scheduled_for,
+        public readonly ?string $hold_reason,
+        public readonly ?string $display_name,
+    ) {}
+
+    /**
+     * Create from API response array.
+     *
+     * @param array<string, mixed> $data
+     */
+    public static function fromArray(array $data): self
+    {
+        return new self(
+            valid: $data['valid'],
+            state: $data['state'],
+            scheduled_for: $data['scheduled_for'] ?? null,
+            hold_reason: $data['hold_reason'] ?? null,
+            display_name: $data['display_name'] ?? null,
+        );
+    }
+}
+
+/**
+ * The deletion is cancelled and the lock lifted
+ */
+class AccountDeletionCancelledResponse
+{
+    public function __construct(
+        public readonly bool $success,
+        public readonly string $ok,
+        public readonly string $was_state,
+        public readonly int $proofs_unsuspended,
+        public readonly int $proofs_kept_suspended,
+        public readonly array $not_restored,
+        public readonly array $notice,
+    ) {}
+
+    /**
+     * Create from API response array.
+     *
+     * @param array<string, mixed> $data
+     */
+    public static function fromArray(array $data): self
+    {
+        return new self(
+            success: $data['success'],
+            ok: $data['ok'],
+            was_state: $data['was_state'],
+            proofs_unsuspended: $data['proofs_unsuspended'],
+            proofs_kept_suspended: $data['proofs_kept_suspended'],
+            not_restored: $data['not_restored'],
+            notice: $data['notice'],
+        );
+    }
+}
+
+/**
+ * The account is locked and its deletion scheduled
+ */
+class AccountDeletionScheduledResponse
+{
+    public function __construct(
+        public readonly bool $success,
+        public readonly string $state,
+        public readonly string $scheduled_for,
+        public readonly bool $already_scheduled,
+        public readonly int $proofs_suspended,
+        public readonly array $notice,
+    ) {}
+
+    /**
+     * Create from API response array.
+     *
+     * @param array<string, mixed> $data
+     */
+    public static function fromArray(array $data): self
+    {
+        return new self(
+            success: $data['success'],
+            state: $data['state'],
+            scheduled_for: $data['scheduled_for'],
+            already_scheduled: $data['already_scheduled'],
+            proofs_suspended: $data['proofs_suspended'],
+            notice: $data['notice'],
+        );
+    }
+}
+
+/**
+ * Where the account stands with its deletion — the lock page's read
+ */
+class AccountDeletionStatus
+{
+    public function __construct(
+        public readonly string $state,
+        public readonly ?string $scheduled_for,
+        public readonly ?string $requested_at,
+        public readonly ?string $hold_reason,
+        public readonly ?array $final_invoice,
+        public readonly bool $can_cancel,
+        public readonly int $grace_days,
+        public readonly bool $delayed,
+    ) {}
+
+    /**
+     * Create from API response array.
+     *
+     * @param array<string, mixed> $data
+     */
+    public static function fromArray(array $data): self
+    {
+        return new self(
+            state: $data['state'],
+            scheduled_for: $data['scheduled_for'] ?? null,
+            requested_at: $data['requested_at'] ?? null,
+            hold_reason: $data['hold_reason'] ?? null,
+            final_invoice: $data['final_invoice'] ?? null,
+            can_cancel: $data['can_cancel'],
+            grace_days: $data['grace_days'],
+            delayed: $data['delayed'],
+        );
+    }
+}
+
+/**
+ * One data export of the account — prepared in the background, downloadable only by the signed-in owner
+ */
+class AccountExportJob
+{
+    public function __construct(
+        public readonly string $id,
+        public readonly string $status,
+        public readonly ?string $error,
+        public readonly string $requested_at,
+        public readonly ?string $ready_at,
+        public readonly string $expires_at,
+        public readonly ?string $downloaded_at,
+        public readonly ?int $size_bytes,
+        public readonly array $counts,
+        public readonly ?string $download_path,
+    ) {}
+
+    /**
+     * Create from API response array.
+     *
+     * @param array<string, mixed> $data
+     */
+    public static function fromArray(array $data): self
+    {
+        return new self(
+            id: $data['id'],
+            status: $data['status'],
+            error: $data['error'] ?? null,
+            requested_at: $data['requested_at'],
+            ready_at: $data['ready_at'] ?? null,
+            expires_at: $data['expires_at'],
+            downloaded_at: $data['downloaded_at'] ?? null,
+            size_bytes: $data['size_bytes'] ?? null,
+            counts: $data['counts'],
+            download_path: $data['download_path'] ?? null,
+        );
+    }
+}
+
+/**
+ * The account's most recent export, or null
+ */
+class AccountExportLatest
+{
+    public function __construct(
+        public readonly ?AccountExportJob $latest,
+    ) {}
+
+    /**
+     * Create from API response array.
+     *
+     * @param array<string, mixed> $data
+     */
+    public static function fromArray(array $data): self
+    {
+        return new self(
+            latest: isset($data['latest']) ? AccountExportJob::fromArray($data['latest']) : null,
+        );
+    }
+}
+
 class AccountSessionIdParam
 {
     public function __construct(
@@ -333,6 +527,195 @@ class ApprovalLinkResponse
     {
         return new self(
             approval_url: $data['approval_url'],
+        );
+    }
+}
+
+/**
+ * One place the claim check read, and what it found there
+ */
+class ArtifactClaimLocation
+{
+    public function __construct(
+        public readonly string $id,
+        public readonly string $location,
+        public readonly ?string $url,
+        public readonly string $result,
+        public readonly ?string $reason,
+        public readonly string $detail,
+        public readonly string $checked_at,
+    ) {}
+
+    /**
+     * Create from API response array.
+     *
+     * @param array<string, mixed> $data
+     */
+    public static function fromArray(array $data): self
+    {
+        return new self(
+            id: $data['id'],
+            location: $data['location'],
+            url: $data['url'] ?? null,
+            result: $data['result'],
+            reason: $data['reason'] ?? null,
+            detail: $data['detail'],
+            checked_at: $data['checked_at'],
+        );
+    }
+}
+
+/**
+ * A public profile of the delegating account that shows the principal domain. Exactly one of the two fields is present
+ */
+class ArtifactClaimProfileLink
+{
+    public function __construct(
+        public readonly ?string $username = null,
+        public readonly ?string $profile_id = null,
+    ) {}
+
+    /**
+     * Create from API response array.
+     *
+     * @param array<string, mixed> $data
+     */
+    public static function fromArray(array $data): self
+    {
+        return new self(
+            username: $data['username'] ?? null,
+            profile_id: $data['profile_id'] ?? null,
+        );
+    }
+}
+
+/**
+ * An in-force delegation whose token was found in at least one checked location
+ */
+class ArtifactClaimDelegation
+{
+    public function __construct(
+        public readonly string $principal,
+        public readonly string $proof_id,
+        public readonly array $scope,
+        public readonly string $issued_at,
+        public readonly string $expires_at,
+        public readonly string $token,
+        public readonly array $found_at,
+        public readonly ?ArtifactClaimProfileLink $profile,
+    ) {}
+
+    /**
+     * Create from API response array.
+     *
+     * @param array<string, mixed> $data
+     */
+    public static function fromArray(array $data): self
+    {
+        return new self(
+            principal: $data['principal'],
+            proof_id: $data['proof_id'],
+            scope: $data['scope'],
+            issued_at: $data['issued_at'],
+            expires_at: $data['expires_at'],
+            token: $data['token'],
+            found_at: $data['found_at'],
+            profile: isset($data['profile']) ? ArtifactClaimProfileLink::fromArray($data['profile']) : null,
+        );
+    }
+}
+
+/**
+ * Whether a domain has published a delegation for this exact artifact, and every place that was checked. A delegation attests who authorized the artifact — not that it is safe, audited or endorsed
+ */
+class ArtifactClaim
+{
+    /**
+     * @param list<ArtifactClaimLocation> $locations
+     * @param list<ArtifactClaimDelegation> $delegations
+     */
+    public function __construct(
+        public readonly string $delegate,
+        public readonly string $delegate_type,
+        public readonly ?string $artifact_path,
+        public readonly string $claim,
+        public readonly string $checked_at,
+        public readonly array $locations,
+        public readonly array $delegations,
+        public readonly ?array $listing,
+    ) {}
+
+    /**
+     * Create from API response array.
+     *
+     * @param array<string, mixed> $data
+     */
+    public static function fromArray(array $data): self
+    {
+        return new self(
+            delegate: $data['delegate'],
+            delegate_type: $data['delegate_type'],
+            artifact_path: $data['artifact_path'] ?? null,
+            claim: $data['claim'],
+            checked_at: $data['checked_at'],
+            locations: array_map(static fn (array $item) => ArtifactClaimLocation::fromArray($item), $data['locations']),
+            delegations: array_map(static fn (array $item) => ArtifactClaimDelegation::fromArray($item), $data['delegations']),
+            listing: $data['listing'] ?? null,
+        );
+    }
+}
+
+/**
+ * Artifacts whose stored answer is `claimed` and which have a page, ordered by delegate
+ */
+class ArtifactClaimedList
+{
+    public function __construct(
+        public readonly array $data,
+        public readonly array $pagination,
+    ) {}
+
+    /**
+     * Create from API response array.
+     *
+     * @param array<string, mixed> $data
+     */
+    public static function fromArray(array $data): self
+    {
+        return new self(
+            data: $data['data'],
+            pagination: $data['pagination'],
+        );
+    }
+}
+
+class AssetRevocationItem
+{
+    public function __construct(
+        public readonly string $asset_id,
+        public readonly string $outcome,
+        public readonly ?string $type = null,
+        public readonly ?string $identifier = null,
+        public readonly ?array $revoked_asset_ids = null,
+        public readonly ?array $delegations_revoked = null,
+        public readonly ?string $domain_status = null,
+    ) {}
+
+    /**
+     * Create from API response array.
+     *
+     * @param array<string, mixed> $data
+     */
+    public static function fromArray(array $data): self
+    {
+        return new self(
+            asset_id: $data['asset_id'],
+            outcome: $data['outcome'],
+            type: $data['type'] ?? null,
+            identifier: $data['identifier'] ?? null,
+            revoked_asset_ids: $data['revoked_asset_ids'] ?? null,
+            delegations_revoked: $data['delegations_revoked'] ?? null,
+            domain_status: $data['domain_status'] ?? null,
         );
     }
 }
@@ -599,6 +982,94 @@ class HitlListQuery
             status: $data['status'] ?? null,
             environment: $data['environment'] ?? null,
             profile_id: $data['profile_id'] ?? null,
+        );
+    }
+}
+
+/**
+ * What removing a phone or email would do; `allowed: false` carries the reason instead of the counts.
+ */
+class IdentifierRemovalPreview
+{
+    public function __construct(
+        public readonly bool $allowed,
+        public readonly ?array $blocked,
+        public readonly ?string $type = null,
+        public readonly ?string $identifier = null,
+        public readonly ?bool $is_primary = null,
+        public readonly ?int $proofs = null,
+        public readonly ?int $authorizations = null,
+        public readonly ?array $hitl_configs_without_approver = null,
+        public readonly ?int $circles = null,
+        public readonly ?array $new_primary = null,
+        public readonly ?string $lookalike_watch = null,
+        public readonly ?array $notice_to = null,
+    ) {}
+
+    /**
+     * Create from API response array.
+     *
+     * @param array<string, mixed> $data
+     */
+    public static function fromArray(array $data): self
+    {
+        return new self(
+            allowed: $data['allowed'],
+            blocked: $data['blocked'] ?? null,
+            type: $data['type'] ?? null,
+            identifier: $data['identifier'] ?? null,
+            is_primary: $data['is_primary'] ?? null,
+            proofs: $data['proofs'] ?? null,
+            authorizations: $data['authorizations'] ?? null,
+            hitl_configs_without_approver: $data['hitl_configs_without_approver'] ?? null,
+            circles: $data['circles'] ?? null,
+            new_primary: $data['new_primary'] ?? null,
+            lookalike_watch: $data['lookalike_watch'] ?? null,
+            notice_to: $data['notice_to'] ?? null,
+        );
+    }
+}
+
+/**
+ * The cascade a removal performed, line by line — the same lines the notice carries.
+ */
+class IdentifierRemovedResponse
+{
+    public function __construct(
+        public readonly string $success,
+        public readonly string $type,
+        public readonly string $removed_id,
+        public readonly string $identifier,
+        public readonly int $proofs_revoked,
+        public readonly int $authorizations_revoked,
+        public readonly array $hitl_configs_without_approver,
+        public readonly int $circles_repointed,
+        public readonly ?array $new_primary,
+        public readonly string $lookalike_watch,
+        public readonly int $sessions_invalidated,
+        public readonly array $notice,
+    ) {}
+
+    /**
+     * Create from API response array.
+     *
+     * @param array<string, mixed> $data
+     */
+    public static function fromArray(array $data): self
+    {
+        return new self(
+            success: $data['success'],
+            type: $data['type'],
+            removed_id: $data['removed_id'],
+            identifier: $data['identifier'],
+            proofs_revoked: $data['proofs_revoked'],
+            authorizations_revoked: $data['authorizations_revoked'],
+            hitl_configs_without_approver: $data['hitl_configs_without_approver'],
+            circles_repointed: $data['circles_repointed'],
+            new_primary: $data['new_primary'] ?? null,
+            lookalike_watch: $data['lookalike_watch'],
+            sessions_invalidated: $data['sessions_invalidated'],
+            notice: $data['notice'],
         );
     }
 }
@@ -984,7 +1455,7 @@ class OAuthProtectedResourceMetadata
 }
 
 /**
- * Per-API-key usage: verification counts by type/channel/status + per-collection totals (requests, confirmations, authorizations) + attribution metadata. Counts only — no recipient identifiers (SEC-001). Data is returned for revoked keys (audit).
+ * Per-API-key usage: verification counts by type/channel/status + per-collection totals (requests, confirmations, authorizations) + attribution metadata. The counts cover the key and every key it replaced (`api_key.replaced_key_ids`). Counts only — no recipient identifiers (SEC-001). Data is returned for revoked keys (audit).
  */
 class ApiKeyUsageResponse
 {
@@ -2299,6 +2770,46 @@ class UpdateHitlBody
 }
 
 /**
+ * A live API key as the owner's key list shows it. Never carries the key value.
+ */
+class UserAPIKeyListItem
+{
+    public function __construct(
+        public readonly string $id,
+        public readonly string $name,
+        public readonly string $prefix,
+        public readonly string $environment,
+        public readonly array $scopes,
+        public readonly ?string $profile_id,
+        public readonly ?string $expires_at,
+        public readonly string $created_at,
+        public readonly array $replaced_key_ids,
+        public readonly ?string $last_used_at = null,
+    ) {}
+
+    /**
+     * Create from API response array.
+     *
+     * @param array<string, mixed> $data
+     */
+    public static function fromArray(array $data): self
+    {
+        return new self(
+            id: $data['id'],
+            name: $data['name'],
+            prefix: $data['prefix'],
+            environment: $data['environment'],
+            scopes: $data['scopes'],
+            profile_id: $data['profile_id'] ?? null,
+            expires_at: $data['expires_at'] ?? null,
+            created_at: $data['created_at'],
+            replaced_key_ids: $data['replaced_key_ids'],
+            last_used_at: $data['last_used_at'] ?? null,
+        );
+    }
+}
+
+/**
  * Per-channel setup block of a multi-channel verification group
  */
 class MultiChannelChannelBlock
@@ -2677,6 +3188,37 @@ class ConnectProviderRequest
     }
 }
 
+class DomainRemovedResponse
+{
+    public function __construct(
+        public readonly string $success,
+        public readonly string $domain,
+        public readonly int $proofs_revoked,
+        public readonly array $delegations_revoked,
+        public readonly array $external,
+        public readonly array $carriers,
+        public readonly array $notice,
+    ) {}
+
+    /**
+     * Create from API response array.
+     *
+     * @param array<string, mixed> $data
+     */
+    public static function fromArray(array $data): self
+    {
+        return new self(
+            success: $data['success'],
+            domain: $data['domain'],
+            proofs_revoked: $data['proofs_revoked'],
+            delegations_revoked: $data['delegations_revoked'],
+            external: $data['external'],
+            carriers: $data['carriers'],
+            notice: $data['notice'],
+        );
+    }
+}
+
 /**
  * Domain record
  */
@@ -2696,6 +3238,7 @@ class Domain
         public readonly ?string $proof_id = null,
         public readonly ?string $proof_status = null,
         public readonly ?string $proof_revoked_reason = null,
+        public readonly ?string $proof_expires_at = null,
     ) {}
 
     /**
@@ -2719,6 +3262,7 @@ class Domain
             proof_id: $data['proof_id'] ?? null,
             proof_status: $data['proof_status'] ?? null,
             proof_revoked_reason: $data['proof_revoked_reason'] ?? null,
+            proof_expires_at: $data['proof_expires_at'] ?? null,
         );
     }
 }
@@ -4682,6 +5226,40 @@ class CreateProfileRequest
 }
 
 /**
+ * A published, in-force delegation for a domain the profile shows
+ */
+class PublicProfileDelegation
+{
+    public function __construct(
+        public readonly string $delegate,
+        public readonly string $delegate_type,
+        public readonly string $principal,
+        public readonly array $scope,
+        public readonly string $issued_at,
+        public readonly string $expires_at,
+        public readonly ?string $artifact_path,
+    ) {}
+
+    /**
+     * Create from API response array.
+     *
+     * @param array<string, mixed> $data
+     */
+    public static function fromArray(array $data): self
+    {
+        return new self(
+            delegate: $data['delegate'],
+            delegate_type: $data['delegate_type'],
+            principal: $data['principal'],
+            scope: $data['scope'],
+            issued_at: $data['issued_at'],
+            expires_at: $data['expires_at'],
+            artifact_path: $data['artifact_path'] ?? null,
+        );
+    }
+}
+
+/**
  * Request body for updating which proofs are displayed on a profile
  */
 class UpdateProfileProofsRequest
@@ -4724,6 +5302,7 @@ class UpdateProfileRequest
         public readonly ?bool $is_primary = null,
         public readonly ?bool $show_verification_dates = null,
         public readonly ?bool $show_proof_channels = null,
+        public readonly ?bool $show_delegations = null,
         public readonly ?ProfileTheme $theme = null,
         public readonly ?array $custom_links = null,
     ) {}
@@ -4745,6 +5324,7 @@ class UpdateProfileRequest
             is_primary: $data['is_primary'] ?? null,
             show_verification_dates: $data['show_verification_dates'] ?? null,
             show_proof_channels: $data['show_proof_channels'] ?? null,
+            show_delegations: $data['show_delegations'] ?? null,
             theme: isset($data['theme']) ? ProfileTheme::fromArray($data['theme']) : null,
             custom_links: isset($data['custom_links']) ? array_map(static fn (array $item) => CustomLink::fromArray($item), $data['custom_links']) : null,
         );
@@ -4777,6 +5357,7 @@ class PublicProfile
 {
     /**
      * @param list<CustomLink>|null $custom_links
+     * @param list<PublicProfileDelegation>|null $delegations
      */
     public function __construct(
         public readonly string $id,
@@ -4793,6 +5374,8 @@ class PublicProfile
         public readonly ?ProfileTheme $theme = null,
         public readonly ?array $custom_links = null,
         public readonly ?array $proofs = null,
+        public readonly ?bool $show_delegations = null,
+        public readonly ?array $delegations = null,
     ) {}
 
     /**
@@ -4817,6 +5400,8 @@ class PublicProfile
             theme: isset($data['theme']) ? ProfileTheme::fromArray($data['theme']) : null,
             custom_links: isset($data['custom_links']) ? array_map(static fn (array $item) => CustomLink::fromArray($item), $data['custom_links']) : null,
             proofs: $data['proofs'] ?? null,
+            show_delegations: $data['show_delegations'] ?? null,
+            delegations: isset($data['delegations']) ? array_map(static fn (array $item) => PublicProfileDelegation::fromArray($item), $data['delegations']) : null,
         );
     }
 }
@@ -4924,54 +5509,6 @@ class Session
             expires_at: $data['expires_at'],
             challenge: isset($data['challenge']) ? Challenge::fromArray($data['challenge']) : null,
             proof: isset($data['proof']) ? Proof::fromArray($data['proof']) : null,
-        );
-    }
-}
-
-// ============================================================================
-// Account
-// ============================================================================
-
-/**
- * Request body for final account deletion
- */
-class DeleteAccountRequest
-{
-    public function __construct(
-        public readonly string $session_id,
-    ) {}
-
-    /**
-     * Create from API response array.
-     *
-     * @param array<string, mixed> $data
-     */
-    public static function fromArray(array $data): self
-    {
-        return new self(
-            session_id: $data['session_id'],
-        );
-    }
-}
-
-/**
- * Request body for initiating account deletion
- */
-class InitiateAccountDeletionRequest
-{
-    public function __construct(
-        public readonly ?string $channel = null,
-    ) {}
-
-    /**
-     * Create from API response array.
-     *
-     * @param array<string, mixed> $data
-     */
-    public static function fromArray(array $data): self
-    {
-        return new self(
-            channel: $data['channel'] ?? null,
         );
     }
 }
@@ -5260,6 +5797,10 @@ class RevokeProofResponse
         public readonly ?string $proof_id = null,
         public readonly ?string $proof_type = null,
         public readonly ?string $verification_id = null,
+        public readonly ?string $principal = null,
+        public readonly ?bool $owned_domain = null,
+        public readonly ?string $domain_status = null,
+        public readonly ?array $delegations_revoked = null,
     ) {}
 
     /**
@@ -5276,6 +5817,10 @@ class RevokeProofResponse
             proof_id: $data['proof_id'] ?? null,
             proof_type: $data['proof_type'] ?? null,
             verification_id: $data['verification_id'] ?? null,
+            principal: $data['principal'] ?? null,
+            owned_domain: $data['owned_domain'] ?? null,
+            domain_status: $data['domain_status'] ?? null,
+            delegations_revoked: $data['delegations_revoked'] ?? null,
         );
     }
 }
@@ -5638,7 +6183,45 @@ class TemplateVariable
 // ============================================================================
 
 /**
- * API key (key value only shown on creation)
+ * A newly created or regenerated API key, with its full value — the one response that carries it.
+ */
+class APIKeyCreatedResponse
+{
+    public function __construct(
+        public readonly string $id,
+        public readonly string $key,
+        public readonly string $name,
+        public readonly string $prefix,
+        public readonly string $environment,
+        public readonly array $scopes,
+        public readonly ?string $profile_id,
+        public readonly string $created_at,
+        public readonly string $warning,
+    ) {}
+
+    /**
+     * Create from API response array.
+     *
+     * @param array<string, mixed> $data
+     */
+    public static function fromArray(array $data): self
+    {
+        return new self(
+            id: $data['id'],
+            key: $data['key'],
+            name: $data['name'],
+            prefix: $data['prefix'],
+            environment: $data['environment'],
+            scopes: $data['scopes'],
+            profile_id: $data['profile_id'] ?? null,
+            created_at: $data['created_at'],
+            warning: $data['warning'],
+        );
+    }
+}
+
+/**
+ * An API key's redacted metadata, as the calling key reads itself (`GET /me/api-key`). Never carries the key value.
  */
 class APIKeyResponse
 {
@@ -5653,6 +6236,7 @@ class APIKeyResponse
         public readonly ?string $last_used_at = null,
         public readonly ?string $expires_at = null,
         public readonly ?string $revoked_at = null,
+        public readonly ?array $replaced_key_ids = null,
     ) {}
 
     /**
@@ -5673,6 +6257,7 @@ class APIKeyResponse
             last_used_at: $data['last_used_at'] ?? null,
             expires_at: $data['expires_at'] ?? null,
             revoked_at: $data['revoked_at'] ?? null,
+            replaced_key_ids: $data['replaced_key_ids'] ?? null,
         );
     }
 }
@@ -5701,6 +6286,88 @@ class CreateAPIKeyRequest
             environment: $data['environment'] ?? null,
             scopes: $data['scopes'] ?? null,
             profile_id: $data['profile_id'] ?? null,
+        );
+    }
+}
+
+// ============================================================================
+// Projects
+// ============================================================================
+
+class ProjectDeletedResponse
+{
+    public function __construct(
+        public readonly string $success,
+        public readonly string $message,
+        public readonly array $project,
+        public readonly bool $was_primary,
+        public readonly int $api_keys_revoked,
+        public readonly int $hitl_archived,
+        public readonly int $hitl_detached,
+        public readonly int $confirmations_denied,
+        public readonly int $authorizations_revoked,
+        public readonly int $requests_cancelled,
+        public readonly int $requests_detached,
+        public readonly int $verifications_detached,
+        public readonly int $domains_detached,
+        public readonly int $circles_detached,
+        public readonly int $templates_deleted,
+        public readonly bool $username_retired,
+        public readonly ?array $new_primary,
+    ) {}
+
+    /**
+     * Create from API response array.
+     *
+     * @param array<string, mixed> $data
+     */
+    public static function fromArray(array $data): self
+    {
+        return new self(
+            success: $data['success'],
+            message: $data['message'],
+            project: $data['project'],
+            was_primary: $data['was_primary'],
+            api_keys_revoked: $data['api_keys_revoked'],
+            hitl_archived: $data['hitl_archived'],
+            hitl_detached: $data['hitl_detached'],
+            confirmations_denied: $data['confirmations_denied'],
+            authorizations_revoked: $data['authorizations_revoked'],
+            requests_cancelled: $data['requests_cancelled'],
+            requests_detached: $data['requests_detached'],
+            verifications_detached: $data['verifications_detached'],
+            domains_detached: $data['domains_detached'],
+            circles_detached: $data['circles_detached'],
+            templates_deleted: $data['templates_deleted'],
+            username_retired: $data['username_retired'],
+            new_primary: $data['new_primary'] ?? null,
+        );
+    }
+}
+
+class ProjectDeletionPreview
+{
+    public function __construct(
+        public readonly bool $allowed,
+        public readonly ?array $blocked,
+        public readonly array $project,
+        public readonly array $counts,
+        public readonly ?array $new_primary,
+    ) {}
+
+    /**
+     * Create from API response array.
+     *
+     * @param array<string, mixed> $data
+     */
+    public static function fromArray(array $data): self
+    {
+        return new self(
+            allowed: $data['allowed'],
+            blocked: $data['blocked'] ?? null,
+            project: $data['project'],
+            counts: $data['counts'],
+            new_primary: $data['new_primary'] ?? null,
         );
     }
 }
@@ -6140,6 +6807,7 @@ class Start2FARequest
         public readonly ?string $phone_id = null,
         public readonly ?int $ttl_seconds = null,
         public readonly ?bool $single_use = null,
+        public readonly ?array $targets = null,
     ) {}
 
     /**
@@ -6156,6 +6824,7 @@ class Start2FARequest
             phone_id: $data['phone_id'] ?? null,
             ttl_seconds: $data['ttl_seconds'] ?? null,
             single_use: $data['single_use'] ?? null,
+            targets: $data['targets'] ?? null,
         );
     }
 }

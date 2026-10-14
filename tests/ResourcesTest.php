@@ -64,6 +64,18 @@ class ResourcesTest extends TestCase
         $v->retrieve('ver/special&id');
     }
 
+    public function testVerificationsDeleteDomainVerificationDeletesEncodedId(): void
+    {
+        $http = $this->mockHttp();
+        $http->expects($this->once())
+            ->method('delete')
+            ->with('/api/v1/verifications/domain/dom%2F1%26x')
+            ->willReturn([]);
+
+        $v = new Verifications($http);
+        $v->deleteDomainVerification('dom/1&x');
+    }
+
     public function testVerificationsListPassesFilters(): void
     {
         $http = $this->mockHttp();

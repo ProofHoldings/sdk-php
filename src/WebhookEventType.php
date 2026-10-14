@@ -27,4 +27,6 @@ enum WebhookEventType: string
     case ProofRevoked = 'proof.revoked';
     case ProofSuspended = 'proof.suspended';
     case ProofUnsuspended = 'proof.unsuspended';
+    case AccountDeletionScheduled = 'account.deletion_scheduled';
+    case AccountDeletionCancelled = 'account.deletion_cancelled';
 }

@@ -88,6 +88,19 @@ class Verifications
     }
 
     /**
+     * Delete a domain verification attempt that is not verified (pending, verifying or failed) —
+     * nothing is revoked. A verified domain, or one that needs re-verification, is refused with 409
+     * `domain_verified`: removing it revokes its proofs and every delegation issued from it, which
+     * belongs to the signed-in owner (the dashboard, or the MCP `delete_domain` tool in a login session).
+     *
+     * @return array<string, mixed>
+     */
+    public function deleteDomainVerification(string $id): array
+    {
+        return $this->http->delete('/api/v1/verifications/domain/' . rawurlencode($id));
+    }
+
+    /**
      * Poll until verification reaches a terminal state.
      *
      * Uses exponential backoff with jitter per the standard polling contract.

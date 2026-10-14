@@ -119,7 +119,8 @@ class Me
 
     /**
      * Per-API-key usage counts (verifications/requests/confirmations/authorizations)
-     * plus attribution context.
+     * plus attribution context, for the key and every key it replaced
+     * (api_key.replaced_key_ids).
      * Endpoint: GET /api/v1/me/api-keys/:id/usage
      */
     public function apiKeyUsage(string $id, ?string $environment = null): array
