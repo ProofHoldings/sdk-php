@@ -146,14 +146,14 @@ class HttpClient
         return $this->request('GET', $path, query: $query);
     }
 
-    public function post(string $path, ?array $body = null): array
+    public function post(string $path, ?array $body = null, array $query = []): array
     {
-        return $this->request('POST', $path, body: $body);
+        return $this->request('POST', $path, body: $body, query: $query);
     }
 
-    public function put(string $path, ?array $body = null): array
+    public function put(string $path, ?array $body = null, array $query = []): array
     {
-        return $this->request('PUT', $path, body: $body);
+        return $this->request('PUT', $path, body: $body, query: $query);
     }
 
     public function patch(string $path, ?array $body = null): array
@@ -161,9 +161,9 @@ class HttpClient
         return $this->request('PATCH', $path, body: $body);
     }
 
-    public function delete(string $path, ?array $body = null): array
+    public function delete(string $path, ?array $body = null, array $query = []): array
     {
-        return $this->request('DELETE', $path, body: $body);
+        return $this->request('DELETE', $path, body: $body, query: $query);
     }
 
     /**

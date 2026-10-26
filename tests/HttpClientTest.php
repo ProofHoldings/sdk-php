@@ -7,6 +7,7 @@ namespace ProofHoldings\Tests;
 use GuzzleHttp\Client;
 use GuzzleHttp\Handler\MockHandler;
 use GuzzleHttp\HandlerStack;
+use GuzzleHttp\Middleware;
 use GuzzleHttp\Psr7\Response;
 use PHPUnit\Framework\TestCase;
 use ProofHoldings\HttpClient;
@@ -68,5 +69,28 @@ class HttpClientTest extends TestCase
         $result = $http->get('/api/v1/some/endpoint');
 
         $this->assertSame([], $result);
+    }
+
+    /** The write verbs carry an optional query too (templates' profile_id); null values are dropped. */
+    public function testWriteVerbsSendQueryOnTheUrl(): void
+    {
+        $history = [];
+        $stack = HandlerStack::create(new MockHandler(array_fill(0, 4, new Response(200, [], '{}'))));
+        $stack->push(Middleware::history($history));
+        $http = new HttpClient('pk_test_123', 'https://mock.proof.test', 5.0, 0);
+        (new ReflectionProperty(HttpClient::class, 'client'))->setValue($http, new Client(['handler' => $stack]));
+
+        $http->put('/api/v1/templates/email/login_request', ['body' => 'x'], ['profile_id' => 'p1']);
+        $http->post('/api/v1/templates/preview', ['channel' => 'email'], ['profile_id' => 'p1']);
+        $http->delete('/api/v1/templates/email/login_request', null, ['profile_id' => 'p1']);
+        $http->post('/api/v1/templates/render', ['channel' => 'email'], ['profile_id' => null]);
+
+        $this->assertCount(4, $history);
+        $this->assertSame(['PUT', 'POST', 'DELETE', 'POST'], array_map(fn($t) => $t['request']->getMethod(), $history));
+        $this->assertSame('profile_id=p1', $history[0]['request']->getUri()->getQuery());
+        $this->assertSame('{"body":"x"}', (string) $history[0]['request']->getBody());
+        $this->assertSame('profile_id=p1', $history[1]['request']->getUri()->getQuery());
+        $this->assertSame('profile_id=p1', $history[2]['request']->getUri()->getQuery());
+        $this->assertSame('', $history[3]['request']->getUri()->getQuery());
     }
 }

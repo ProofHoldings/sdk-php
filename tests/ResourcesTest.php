@@ -530,7 +530,7 @@ class ResourcesTest extends TestCase
         $http = $this->mockHttp();
         $http->expects($this->once())
             ->method('get')
-            ->with('/api/v1/templates')
+            ->with('/api/v1/templates', [])
             ->willReturn(['custom_templates' => [], 'available_channels' => []]);
 
         $t = new Templates($http);
@@ -556,7 +556,7 @@ class ResourcesTest extends TestCase
         $http = $this->mockHttp();
         $http->expects($this->once())
             ->method('get')
-            ->with('/api/v1/templates/telegram/confirmation_request')
+            ->with('/api/v1/templates/telegram/confirmation_request', [])
             ->willReturn(['is_custom' => false, 'template' => []]);
 
         $t = new Templates($http);
@@ -572,7 +572,7 @@ class ResourcesTest extends TestCase
             ->with('/api/v1/templates/whatsapp/verification_request', [
                 'body' => 'Your code is {{code}}',
                 'button_text' => 'Verify',
-            ])
+            ], [])
             ->willReturn(['success' => true, 'template' => []]);
 
         $t = new Templates($http);
@@ -588,7 +588,7 @@ class ResourcesTest extends TestCase
         $http = $this->mockHttp();
         $http->expects($this->once())
             ->method('delete')
-            ->with('/api/v1/templates/email/login_request')
+            ->with('/api/v1/templates/email/login_request', null, [])
             ->willReturn(['success' => true, 'message' => 'Template reset to default']);
 
         $t = new Templates($http);
@@ -605,7 +605,7 @@ class ResourcesTest extends TestCase
                 'channel' => 'telegram',
                 'message_type' => 'confirmation_request',
                 'body' => 'Hi {{business_name}}',
-            ])
+            ], [])
             ->willReturn(['preview' => ['body' => 'x'], 'validation_errors' => [], 'is_valid' => true]);
 
         $t = new Templates($http);
@@ -626,7 +626,7 @@ class ResourcesTest extends TestCase
                 'channel' => 'sms',
                 'message_type' => 'verification_request',
                 'variables' => ['code' => '123456'],
-            ])
+            ], [])
             ->willReturn(['rendered' => ['body' => 'Code: 123456']]);
 
         $t = new Templates($http);
@@ -636,6 +636,61 @@ class ResourcesTest extends TestCase
             'variables' => ['code' => '123456'],
         ]);
         $this->assertSame('Code: 123456', $result['rendered']['body']);
+    }
+
+    /**
+     * Every templates method except getDefaults takes the project id as a
+     * trailing argument, sent as the profile_id query parameter.
+     */
+    public function testTemplatesSendProfileIdWhenGiven(): void
+    {
+        $projectId = '65f1c2a9b8e4d3f2a1b0c9d8';
+        $query = ['profile_id' => $projectId];
+        $http = $this->mockHttp();
+        $http->expects($this->exactly(2))
+            ->method('get')
+            ->willReturnCallback(function (string $path, array $q) use ($query): array {
+                $this->assertContains($path, ['/api/v1/templates', '/api/v1/templates/email/login_request']);
+                $this->assertSame($query, $q);
+                return [];
+            });
+        $http->expects($this->once())
+            ->method('put')
+            ->with('/api/v1/templates/email/login_request', ['body' => 'Hi {{business_name}}'], $query)
+            ->willReturn([]);
+        $http->expects($this->once())
+            ->method('delete')
+            ->with('/api/v1/templates/email/login_request', null, $query)
+            ->willReturn([]);
+        $http->expects($this->exactly(2))
+            ->method('post')
+            ->willReturnCallback(function (string $path, ?array $body, array $q) use ($query): array {
+                $this->assertContains($path, ['/api/v1/templates/preview', '/api/v1/templates/render']);
+                $this->assertSame(['channel' => 'email', 'message_type' => 'login_request'], $body);
+                $this->assertSame($query, $q);
+                return [];
+            });
+
+        $t = new Templates($http);
+        $params = ['channel' => 'email', 'message_type' => 'login_request'];
+        $t->list($projectId);
+        $t->get('email', 'login_request', $projectId);
+        $t->upsert('email', 'login_request', ['body' => 'Hi {{business_name}}'], $projectId);
+        $t->delete('email', 'login_request', $projectId);
+        $t->preview($params, $projectId);
+        $t->render($params, $projectId);
+    }
+
+    public function testTemplatesOmitProfileIdWhenNull(): void
+    {
+        $http = $this->mockHttp();
+        $http->expects($this->once())
+            ->method('get')
+            ->with('/api/v1/templates', [])
+            ->willReturn([]);
+
+        $t = new Templates($http);
+        $t->list(null);
     }
 
     // --- Profiles ---

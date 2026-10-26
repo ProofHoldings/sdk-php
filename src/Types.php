@@ -97,6 +97,7 @@ class HealthResponse
     public function __construct(
         public readonly string $status,
         public readonly mixed $timestamp,
+        public readonly ?array $components = null,
     ) {}
 
     /**
@@ -109,6 +110,7 @@ class HealthResponse
         return new self(
             status: $data['status'],
             timestamp: $data['timestamp'],
+            components: $data['components'] ?? null,
         );
     }
 }
@@ -775,6 +777,60 @@ class AccountSessionResponse
 }
 
 /**
+ * Switch auto top-up on or off. Switching it on needs a card saved by an earlier top-up.
+ */
+class AutoTopUpRequest
+{
+    public function __construct(
+        public readonly bool $enabled,
+        public readonly mixed $amount = null,
+    ) {}
+
+    /**
+     * Create from API response array.
+     *
+     * @param array<string, mixed> $data
+     */
+    public static function fromArray(array $data): self
+    {
+        return new self(
+            enabled: $data['enabled'],
+            amount: $data['amount'] ?? null,
+        );
+    }
+}
+
+/**
+ * The prepaid balance, from which proofs past the plan's included amount are drawn
+ */
+class BalanceResponse
+{
+    public function __construct(
+        public readonly bool $billing_enabled,
+        public readonly array $balance,
+        public readonly int $low_balance_threshold,
+        public readonly array $top_up_amounts,
+        public readonly array $auto_top_up,
+    ) {}
+
+    /**
+     * Create from API response array.
+     *
+     * @param array<string, mixed> $data
+     */
+    public static function fromArray(array $data): self
+    {
+        return new self(
+            billing_enabled: $data['billing_enabled'],
+            balance: $data['balance'],
+            low_balance_threshold: $data['low_balance_threshold'],
+            top_up_amounts: $data['top_up_amounts'],
+            auto_top_up: $data['auto_top_up'],
+        );
+    }
+}
+
+/**
  * Chat ID discovery poll result
  */
 class ChatIdDiscoveryPollResponse
@@ -1048,6 +1104,7 @@ class IdentifierRemovedResponse
         public readonly string $lookalike_watch,
         public readonly int $sessions_invalidated,
         public readonly array $notice,
+        public readonly ?bool $sessions_signed_out = null,
     ) {}
 
     /**
@@ -1070,6 +1127,7 @@ class IdentifierRemovedResponse
             lookalike_watch: $data['lookalike_watch'],
             sessions_invalidated: $data['sessions_invalidated'],
             notice: $data['notice'],
+            sessions_signed_out: $data['sessions_signed_out'] ?? null,
         );
     }
 }
@@ -1166,6 +1224,73 @@ class IdentityChallengeListResponse
     {
         return new self(
             data: array_map(static fn (array $item) => IdentityChallengeResponse::fromArray($item), $data['data']),
+            pagination: $data['pagination'],
+        );
+    }
+}
+
+/**
+ * One row of the prepaid balance history
+ */
+class LedgerEntry
+{
+    public function __construct(
+        public readonly string $id,
+        public readonly string $kind,
+        public readonly int $amount,
+        public readonly string $currency,
+        public readonly int $mills,
+        public readonly ?int $proofs,
+        public readonly ?string $period,
+        public readonly ?string $invoice_id,
+        public readonly string $created_at,
+        public readonly string $updated_at,
+    ) {}
+
+    /**
+     * Create from API response array.
+     *
+     * @param array<string, mixed> $data
+     */
+    public static function fromArray(array $data): self
+    {
+        return new self(
+            id: $data['id'],
+            kind: $data['kind'],
+            amount: $data['amount'],
+            currency: $data['currency'],
+            mills: $data['mills'],
+            proofs: $data['proofs'] ?? null,
+            period: $data['period'] ?? null,
+            invoice_id: $data['invoice_id'] ?? null,
+            created_at: $data['created_at'],
+            updated_at: $data['updated_at'],
+        );
+    }
+}
+
+/**
+ * One page of the prepaid balance history, newest first
+ */
+class LedgerListResponse
+{
+    /**
+     * @param list<LedgerEntry> $data
+     */
+    public function __construct(
+        public readonly array $data,
+        public readonly array $pagination,
+    ) {}
+
+    /**
+     * Create from API response array.
+     *
+     * @param array<string, mixed> $data
+     */
+    public static function fromArray(array $data): self
+    {
+        return new self(
+            data: array_map(static fn (array $item) => LedgerEntry::fromArray($item), $data['data']),
             pagination: $data['pagination'],
         );
     }
@@ -1366,6 +1491,7 @@ class CreateMultiChannelVerificationRequest
         public readonly ?string $external_user_id = null,
         public readonly ?array $client_metadata = null,
         public readonly ?int $proof_expiry_days = null,
+        public readonly ?string $profile_id = null,
     ) {}
 
     /**
@@ -1382,6 +1508,7 @@ class CreateMultiChannelVerificationRequest
             external_user_id: $data['external_user_id'] ?? null,
             client_metadata: $data['client_metadata'] ?? null,
             proof_expiry_days: $data['proof_expiry_days'] ?? null,
+            profile_id: $data['profile_id'] ?? null,
         );
     }
 }
@@ -2486,6 +2613,32 @@ class PutHitlKeysBody
 }
 
 /**
+ * Readiness probe response — `ready` is true only when both MongoDB and Redis answer
+ */
+class ReadinessResponse
+{
+    public function __construct(
+        public readonly bool $ready,
+        public readonly array $checks,
+        public readonly string $timestamp,
+    ) {}
+
+    /**
+     * Create from API response array.
+     *
+     * @param array<string, mixed> $data
+     */
+    public static function fromArray(array $data): self
+    {
+        return new self(
+            ready: $data['ready'],
+            checks: $data['checks'],
+            timestamp: $data['timestamp'],
+        );
+    }
+}
+
+/**
  * Completion-rate history query parameters
  */
 class RequestHealthHistoryQueryParams
@@ -2663,6 +2816,8 @@ class SuspendProofResponse
 
 /**
  * A message template as resolved for one public profile — either the profile override or the inherited default.
+ *
+ * @deprecated Removed from the API (templates belong to a project: use the templates resource with the project's id); kept so code written for an earlier 1.x release keeps compiling, and dropped in the next major version.
  */
 class ProfileTemplate
 {
@@ -2693,6 +2848,56 @@ class ProfileTemplate
             subject: $data['subject'] ?? null,
             button_text: $data['button_text'] ?? null,
             button_url_template: $data['button_url_template'] ?? null,
+        );
+    }
+}
+
+/**
+ * Request body for buying a prepaid balance top-up
+ */
+class TopUpRequest
+{
+    public function __construct(
+        public readonly mixed $amount,
+        public readonly string $success_url,
+        public readonly string $cancel_url,
+        public readonly ?bool $auto_top_up = null,
+    ) {}
+
+    /**
+     * Create from API response array.
+     *
+     * @param array<string, mixed> $data
+     */
+    public static function fromArray(array $data): self
+    {
+        return new self(
+            amount: $data['amount'],
+            success_url: $data['success_url'],
+            cancel_url: $data['cancel_url'],
+            auto_top_up: $data['auto_top_up'] ?? null,
+        );
+    }
+}
+
+/**
+ * Top-up checkout session creation response
+ */
+class TopUpResponse
+{
+    public function __construct(
+        public readonly string $checkout_url,
+    ) {}
+
+    /**
+     * Create from API response array.
+     *
+     * @param array<string, mixed> $data
+     */
+    public static function fromArray(array $data): self
+    {
+        return new self(
+            checkout_url: $data['checkout_url'],
         );
     }
 }
@@ -2962,7 +3167,8 @@ class ProfileAssetOption
 class SettingsResponse
 {
     public function __construct(
-        public readonly BrandingSettings $branding,
+        /** @deprecated Removed from the API (account-level branding is retired: each project (sub-account) carries its own branding, set with the profiles resource); kept so code written for an earlier 1.x release keeps compiling, and dropped in the next major version. */
+        public readonly ?BrandingSettings $branding,
         public readonly WebhookSettingsResponse $webhook,
         public readonly ?int $proof_expiry_days,
     ) {}
@@ -2975,7 +3181,7 @@ class SettingsResponse
     public static function fromArray(array $data): self
     {
         return new self(
-            branding: BrandingSettings::fromArray($data['branding']),
+            branding: isset($data['branding']) ? BrandingSettings::fromArray($data['branding']) : null,
             webhook: WebhookSettingsResponse::fromArray($data['webhook']),
             proof_expiry_days: $data['proof_expiry_days'] ?? null,
         );
@@ -3703,7 +3909,7 @@ class AuthSessionIdParam
 }
 
 /**
- * Active session entry
+ * Session entry
  */
 class AuthSessionListItem
 {
@@ -3785,6 +3991,7 @@ class CreateAuthSessionRequest
         public readonly string $channel,
         public readonly ?string $phone_number = null,
         public readonly ?string $email = null,
+        public readonly ?string $return_to = null,
     ) {}
 
     /**
@@ -3798,6 +4005,7 @@ class CreateAuthSessionRequest
             channel: $data['channel'],
             phone_number: $data['phone_number'] ?? null,
             email: $data['email'] ?? null,
+            return_to: $data['return_to'] ?? null,
         );
     }
 }
@@ -3851,7 +4059,7 @@ class ExchangeTokenResponse
 }
 
 /**
- * List of active sessions
+ * List of sessions
  */
 class ListSessionsResponse
 {
@@ -4389,6 +4597,8 @@ class PortalResponse
 
 /**
  * Branding settings
+ *
+ * @deprecated Removed from the API (account-level branding is retired: each project (sub-account) carries its own branding, set with the profiles resource); kept so code written for an earlier 1.x release keeps compiling, and dropped in the next major version.
  */
 class BrandingSettings
 {
@@ -4474,7 +4684,8 @@ class UpdateSettingsResponse
 {
     public function __construct(
         public readonly bool $success,
-        public readonly BrandingSettings $branding,
+        /** @deprecated Removed from the API (account-level branding is retired: each project (sub-account) carries its own branding, set with the profiles resource); kept so code written for an earlier 1.x release keeps compiling, and dropped in the next major version. */
+        public readonly ?BrandingSettings $branding,
         public readonly WebhookSettingsResponse $webhook,
         public readonly ?int $proof_expiry_days,
     ) {}
@@ -4488,7 +4699,7 @@ class UpdateSettingsResponse
     {
         return new self(
             success: $data['success'],
-            branding: BrandingSettings::fromArray($data['branding']),
+            branding: isset($data['branding']) ? BrandingSettings::fromArray($data['branding']) : null,
             webhook: WebhookSettingsResponse::fromArray($data['webhook']),
             proof_expiry_days: $data['proof_expiry_days'] ?? null,
         );
@@ -4739,6 +4950,7 @@ class CreateVerificationRequest
         public readonly ?string $email_prefix = null,
         public readonly ?string $bot_token = null,
         public readonly ?int $proof_expiry_days = null,
+        public readonly ?string $profile_id = null,
     ) {}
 
     /**
@@ -4758,6 +4970,7 @@ class CreateVerificationRequest
             email_prefix: $data['email_prefix'] ?? null,
             bot_token: $data['bot_token'] ?? null,
             proof_expiry_days: $data['proof_expiry_days'] ?? null,
+            profile_id: $data['profile_id'] ?? null,
         );
     }
 }
@@ -5203,6 +5416,8 @@ class CreateProfileRequest
         public readonly ?bool $is_public = null,
         public readonly ?bool $is_primary = null,
         public readonly ?ProfileTheme $theme = null,
+        public readonly ?string $email_theme = null,
+        public readonly ?string $support_email = null,
     ) {}
 
     /**
@@ -5221,6 +5436,8 @@ class CreateProfileRequest
             is_public: $data['is_public'] ?? null,
             is_primary: $data['is_primary'] ?? null,
             theme: isset($data['theme']) ? ProfileTheme::fromArray($data['theme']) : null,
+            email_theme: $data['email_theme'] ?? null,
+            support_email: $data['support_email'] ?? null,
         );
     }
 }
@@ -5305,6 +5522,8 @@ class UpdateProfileRequest
         public readonly ?bool $show_delegations = null,
         public readonly ?ProfileTheme $theme = null,
         public readonly ?array $custom_links = null,
+        public readonly ?string $email_theme = null,
+        public readonly ?string $support_email = null,
     ) {}
 
     /**
@@ -5327,6 +5546,8 @@ class UpdateProfileRequest
             show_delegations: $data['show_delegations'] ?? null,
             theme: isset($data['theme']) ? ProfileTheme::fromArray($data['theme']) : null,
             custom_links: isset($data['custom_links']) ? array_map(static fn (array $item) => CustomLink::fromArray($item), $data['custom_links']) : null,
+            email_theme: $data['email_theme'] ?? null,
+            support_email: $data['support_email'] ?? null,
         );
     }
 }
@@ -5376,6 +5597,8 @@ class PublicProfile
         public readonly ?array $proofs = null,
         public readonly ?bool $show_delegations = null,
         public readonly ?array $delegations = null,
+        public readonly ?string $email_theme = null,
+        public readonly ?string $support_email = null,
     ) {}
 
     /**
@@ -5402,6 +5625,8 @@ class PublicProfile
             proofs: $data['proofs'] ?? null,
             show_delegations: $data['show_delegations'] ?? null,
             delegations: isset($data['delegations']) ? array_map(static fn (array $item) => PublicProfileDelegation::fromArray($item), $data['delegations']) : null,
+            email_theme: $data['email_theme'] ?? null,
+            support_email: $data['support_email'] ?? null,
         );
     }
 }
@@ -5439,13 +5664,17 @@ class CreateProviderCredentialRequest
 // ============================================================================
 
 /**
- * Request body for creating a phone verification session
+ * Request body for creating a phone-first verification session
  */
 class CreateSessionRequest
 {
     public function __construct(
+        /** @deprecated Removed from the API (a session takes no phone number (the person shares it in the chat), and the server ignores it); kept so code written for an earlier 1.x release keeps compiling, and dropped in the next major version. */
         public readonly string $phone,
         public readonly ?string $channel = null,
+        public readonly ?string $profile_id = null,
+        public readonly ?array $client_metadata = null,
+        public readonly ?array $context = null,
     ) {}
 
     /**
@@ -5458,6 +5687,9 @@ class CreateSessionRequest
         return new self(
             phone: $data['phone'],
             channel: $data['channel'] ?? null,
+            profile_id: $data['profile_id'] ?? null,
+            client_metadata: $data['client_metadata'] ?? null,
+            context: $data['context'] ?? null,
         );
     }
 }
@@ -5482,7 +5714,105 @@ class SessionIdParam
 }
 
 /**
- * Phone verification session
+ * One of our SMS numbers, for one region
+ */
+class SessionSmsNumber
+{
+    public function __construct(
+        public readonly string $did,
+        public readonly string $label,
+        public readonly string $flag,
+        public readonly ?string $qr_code = null,
+        public readonly ?string $qr_text = null,
+    ) {}
+
+    /**
+     * Create from API response array.
+     *
+     * @param array<string, mixed> $data
+     */
+    public static function fromArray(array $data): self
+    {
+        return new self(
+            did: $data['did'],
+            label: $data['label'],
+            flag: $data['flag'],
+            qr_code: $data['qr_code'] ?? null,
+            qr_text: $data['qr_text'] ?? null,
+        );
+    }
+}
+
+/**
+ * Every number an `sms` session's code can be texted to, one per configured region (a region with no number is absent), each with its own QR code. `deep_link` uses the default region's number; the request comes from your server, so nothing in it says where the person is.
+ */
+class SessionSmsNumbers
+{
+    public function __construct(
+        public readonly SessionSmsNumber $americas,
+        public readonly ?SessionSmsNumber $europe = null,
+        public readonly ?SessionSmsNumber $israel = null,
+    ) {}
+
+    /**
+     * Create from API response array.
+     *
+     * @param array<string, mixed> $data
+     */
+    public static function fromArray(array $data): self
+    {
+        return new self(
+            americas: SessionSmsNumber::fromArray($data['americas']),
+            europe: isset($data['europe']) ? SessionSmsNumber::fromArray($data['europe']) : null,
+            israel: isset($data['israel']) ? SessionSmsNumber::fromArray($data['israel']) : null,
+        );
+    }
+}
+
+/**
+ * A new phone-first session: what to show the person
+ */
+class CreateSessionResponse
+{
+    public function __construct(
+        public readonly string $id,
+        public readonly string $channel,
+        public readonly string $status,
+        public readonly string $deep_link,
+        public readonly string $qr_code,
+        public readonly string $qr_text,
+        public readonly string $expires_at,
+        public readonly string $instructions,
+        public readonly ?string $sms_code = null,
+        public readonly ?string $sms_message = null,
+        public readonly ?SessionSmsNumbers $sms_dids = null,
+    ) {}
+
+    /**
+     * Create from API response array.
+     *
+     * @param array<string, mixed> $data
+     */
+    public static function fromArray(array $data): self
+    {
+        return new self(
+            id: $data['id'],
+            channel: $data['channel'],
+            status: $data['status'],
+            deep_link: $data['deep_link'],
+            qr_code: $data['qr_code'],
+            qr_text: $data['qr_text'],
+            expires_at: $data['expires_at'],
+            instructions: $data['instructions'],
+            sms_code: $data['sms_code'] ?? null,
+            sms_message: $data['sms_message'] ?? null,
+            sms_dids: isset($data['sms_dids']) ? SessionSmsNumbers::fromArray($data['sms_dids']) : null,
+        );
+    }
+}
+
+/**
+ * Phone-first session status
  */
 class Session
 {
@@ -5490,9 +5820,15 @@ class Session
         public readonly string $id,
         public readonly string $status,
         public readonly string $created_at,
-        public readonly string $expires_at,
+        /** @deprecated Removed from the API (GET /api/v1/sessions/{id} never returned it; the session's expiry is on the create response); kept so code written for an earlier 1.x release keeps compiling, and dropped in the next major version. */
+        public readonly ?string $expires_at = null,
+        /** @deprecated Removed from the API (GET /api/v1/sessions/{id} never returned it, and nothing replaces it); kept so code written for an earlier 1.x release keeps compiling, and dropped in the next major version. */
         public readonly ?Challenge $challenge = null,
         public readonly ?Proof $proof = null,
+        public readonly ?string $channel = null,
+        public readonly ?string $phone_number = null,
+        public readonly ?string $verified_at = null,
+        public readonly ?string $verification_id = null,
     ) {}
 
     /**
@@ -5506,9 +5842,13 @@ class Session
             id: $data['id'],
             status: $data['status'],
             created_at: $data['created_at'],
-            expires_at: $data['expires_at'],
+            expires_at: $data['expires_at'] ?? null,
             challenge: isset($data['challenge']) ? Challenge::fromArray($data['challenge']) : null,
             proof: isset($data['proof']) ? Proof::fromArray($data['proof']) : null,
+            channel: $data['channel'] ?? null,
+            phone_number: $data['phone_number'] ?? null,
+            verified_at: $data['verified_at'] ?? null,
+            verification_id: $data['verification_id'] ?? null,
         );
     }
 }
@@ -6448,7 +6788,7 @@ class WebhookDelivery
         public readonly ?int $response_status,
         public readonly ?string $error_message,
         public readonly string $created_at,
-        public readonly array $payload,
+        public readonly ?array $payload,
         public readonly ?string $response_body,
         public readonly string $updated_at,
     ) {}
@@ -6474,7 +6814,7 @@ class WebhookDelivery
             response_status: $data['response_status'] ?? null,
             error_message: $data['error_message'] ?? null,
             created_at: $data['created_at'],
-            payload: $data['payload'],
+            payload: $data['payload'] ?? null,
             response_body: $data['response_body'] ?? null,
             updated_at: $data['updated_at'],
         );

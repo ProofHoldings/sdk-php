@@ -13,6 +13,12 @@ class Authorizations
 {
     public function __construct(private readonly HttpClient $http) {}
 
+    /**
+     * Create a consent request for one recipient of an approval setup.
+     *
+     * The consent message names the approval setup's sub-account; a `business_name` entry is
+     * deprecated and ignored by the server.
+     */
     public function create(array $params): CreateAuthorizationResponse
     {
         $data = $this->http->post('/api/v1/authorizations', $params);
