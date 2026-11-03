@@ -10,7 +10,8 @@ use ProofHoldings\Streaming;
 
 class Verifications
 {
-    private const array TERMINAL_STATES = Polling::VERIFICATION_TERMINAL_STATES;
+    /** `cancelled` is the losing sibling of a first-win multi-channel group: it never changes again. */
+    private const array TERMINAL_STATES = [...Polling::VERIFICATION_TERMINAL_STATES, 'cancelled'];
 
     public function __construct(private readonly HttpClient $http) {}
 

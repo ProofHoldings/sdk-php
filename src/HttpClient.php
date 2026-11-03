@@ -11,6 +11,7 @@ use GuzzleHttp\Handler\StreamHandler;
 use GuzzleHttp\HandlerStack;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\StreamInterface;
+use ProofHoldings\Exceptions\BillingUnavailableException;
 use ProofHoldings\Exceptions\NetworkException;
 use ProofHoldings\Exceptions\ProofException;
 use ProofHoldings\Exceptions\TimeoutException;
@@ -276,8 +277,9 @@ class HttpClient
                     continue;
                 }
 
-                // Server errors — retry with backoff
-                if ($statusCode >= 500 && $attempt < $this->maxRetries) {
+                // Server errors — retry with backoff, except a refusal asking again cannot change
+                $isBillingUnavailable = ($responseBody['error']['code'] ?? null) === BillingUnavailableException::CODE;
+                if ($statusCode >= 500 && $attempt < $this->maxRetries && !$isBillingUnavailable) {
                     usleep($this->backoffMicroseconds($attempt));
                     continue;
                 }

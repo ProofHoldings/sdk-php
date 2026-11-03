@@ -387,12 +387,52 @@ class AccountExportJob
 }
 
 /**
- * The account's most recent export, or null
+ * A signed receipt for one download of an export; kept after the export and after the account is deleted
+ */
+class AccountExportReceipt
+{
+    public function __construct(
+        public readonly string $id,
+        public readonly string $export_id,
+        public readonly string $downloaded_by,
+        public readonly string $downloaded_at,
+        public readonly string $sha256,
+        public readonly int $size_bytes,
+        public readonly string $receipt,
+        public readonly bool $notice_suppressed,
+    ) {}
+
+    /**
+     * Create from API response array.
+     *
+     * @param array<string, mixed> $data
+     */
+    public static function fromArray(array $data): self
+    {
+        return new self(
+            id: $data['id'],
+            export_id: $data['export_id'],
+            downloaded_by: $data['downloaded_by'],
+            downloaded_at: $data['downloaded_at'],
+            sha256: $data['sha256'],
+            size_bytes: $data['size_bytes'],
+            receipt: $data['receipt'],
+            notice_suppressed: $data['notice_suppressed'],
+        );
+    }
+}
+
+/**
+ * The account's most recent export, or null, and the receipts of its downloads
  */
 class AccountExportLatest
 {
+    /**
+     * @param list<AccountExportReceipt>|null $receipts
+     */
     public function __construct(
         public readonly ?AccountExportJob $latest,
+        public readonly ?array $receipts = null,
     ) {}
 
     /**
@@ -404,6 +444,7 @@ class AccountExportLatest
     {
         return new self(
             latest: isset($data['latest']) ? AccountExportJob::fromArray($data['latest']) : null,
+            receipts: isset($data['receipts']) ? array_map(static fn (array $item) => AccountExportReceipt::fromArray($item), $data['receipts']) : null,
         );
     }
 }
@@ -831,6 +872,30 @@ class BalanceResponse
 }
 
 /**
+ * A sub-account's callback signing secret.
+ */
+class CallbackSecret
+{
+    public function __construct(
+        public readonly string $profile_id,
+        public readonly string $secret,
+    ) {}
+
+    /**
+     * Create from API response array.
+     *
+     * @param array<string, mixed> $data
+     */
+    public static function fromArray(array $data): self
+    {
+        return new self(
+            profile_id: $data['profile_id'],
+            secret: $data['secret'],
+        );
+    }
+}
+
+/**
  * Chat ID discovery poll result
  */
 class ChatIdDiscoveryPollResponse
@@ -911,6 +976,100 @@ class CircleMemberInput
 }
 
 /**
+ * The account's company profile: who the client is, printed on its invoices.
+ */
+class CompanyProfile
+{
+    public function __construct(
+        public readonly string $legal_name,
+        public readonly ?string $registration_code,
+        public readonly string $country,
+        public readonly ?string $vat_number,
+        public readonly bool $no_vat_number,
+        public readonly string $address_line1,
+        public readonly ?string $address_line2,
+        public readonly string $city,
+        public readonly string $postal_code,
+        public readonly string $billing_email,
+        public readonly ?string $updated_at,
+        public readonly array $vat_check,
+        public readonly bool $complete,
+    ) {}
+
+    /**
+     * Create from API response array.
+     *
+     * @param array<string, mixed> $data
+     */
+    public static function fromArray(array $data): self
+    {
+        return new self(
+            legal_name: $data['legal_name'],
+            registration_code: $data['registration_code'] ?? null,
+            country: $data['country'],
+            vat_number: $data['vat_number'] ?? null,
+            no_vat_number: $data['no_vat_number'],
+            address_line1: $data['address_line1'],
+            address_line2: $data['address_line2'] ?? null,
+            city: $data['city'],
+            postal_code: $data['postal_code'],
+            billing_email: $data['billing_email'],
+            updated_at: $data['updated_at'] ?? null,
+            vat_check: $data['vat_check'],
+            complete: $data['complete'],
+        );
+    }
+}
+
+/**
+ * The account's company profile.
+ */
+class CompanyResponse
+{
+    public function __construct(
+        public readonly ?CompanyProfile $company,
+    ) {}
+
+    /**
+     * Create from API response array.
+     *
+     * @param array<string, mixed> $data
+     */
+    public static function fromArray(array $data): self
+    {
+        return new self(
+            company: isset($data['company']) ? CompanyProfile::fromArray($data['company']) : null,
+        );
+    }
+}
+
+/**
+ * One "Send again": when, who asked, and which channels it went to
+ */
+class ConfirmationResend
+{
+    public function __construct(
+        public readonly string $at,
+        public readonly array $actor,
+        public readonly array $channels,
+    ) {}
+
+    /**
+     * Create from API response array.
+     *
+     * @param array<string, mixed> $data
+     */
+    public static function fromArray(array $data): self
+    {
+        return new self(
+            at: $data['at'],
+            actor: $data['actor'],
+            channels: $data['channels'],
+        );
+    }
+}
+
+/**
  * Request body for creating an account-bootstrap session. The server transparently pivots to a login session when the submitted identity already belongs to an active User, so the agent polls identically regardless of outcome.
  */
 class CreateAccountRequest
@@ -956,6 +1115,38 @@ class CreateCircleMemberBody
         return new self(
             name: $data['name'],
             whatsapp_phone: $data['whatsapp_phone'] ?? null,
+        );
+    }
+}
+
+/**
+ * A new webhook endpoint. A sub-account key may create only one scoped `selected` to exactly its own sub-account.
+ */
+class CreateWebhookEndpointRequest
+{
+    public function __construct(
+        public readonly string $url,
+        public readonly string $scope,
+        public readonly ?array $events = null,
+        public readonly ?array $profile_ids = null,
+        public readonly ?string $status = null,
+        public readonly ?string $description = null,
+    ) {}
+
+    /**
+     * Create from API response array.
+     *
+     * @param array<string, mixed> $data
+     */
+    public static function fromArray(array $data): self
+    {
+        return new self(
+            url: $data['url'],
+            scope: $data['scope'],
+            events: $data['events'] ?? null,
+            profile_ids: $data['profile_ids'] ?? null,
+            status: $data['status'] ?? null,
+            description: $data['description'] ?? null,
         );
     }
 }
@@ -1008,6 +1199,177 @@ class CreateDelegationRequest
             delegate: DelegateIdentifier::fromArray($data['delegate']),
             scope: $data['scope'],
             expires_in: $data['expires_in'] ?? null,
+        );
+    }
+}
+
+/**
+ * Where a delegation is still visible to a third party
+ */
+class DelegationCarrier
+{
+    public function __construct(
+        public readonly string $carrier,
+        public readonly string $state,
+        public readonly string $reason,
+        public readonly ?string $cardUrl = null,
+    ) {}
+
+    /**
+     * Create from API response array.
+     *
+     * @param array<string, mixed> $data
+     */
+    public static function fromArray(array $data): self
+    {
+        return new self(
+            carrier: $data['carrier'],
+            state: $data['state'],
+            reason: $data['reason'],
+            cardUrl: $data['cardUrl'] ?? null,
+        );
+    }
+}
+
+/**
+ * Where this delegation is still visible to a third party
+ */
+class DelegationCarriersResponse
+{
+    /**
+     * @param list<DelegationCarrier> $carriers
+     */
+    public function __construct(
+        public readonly array $carriers,
+    ) {}
+
+    /**
+     * Create from API response array.
+     *
+     * @param array<string, mixed> $data
+     */
+    public static function fromArray(array $data): self
+    {
+        return new self(
+            carriers: array_map(static fn (array $item) => DelegationCarrier::fromArray($item), $data['carriers']),
+        );
+    }
+}
+
+/**
+ * What one DNS provider needs and can do. The keys are camelCase as sent; this body predates the snake_case convention and is kept as it is.
+ */
+class DnsProviderMetadataItem
+{
+    public function __construct(
+        public readonly string $name,
+        public readonly array $requiredCredentials,
+        public readonly array $optionalCredentials,
+        public readonly array $capabilities,
+        public readonly ?string $apiDocUrl = null,
+    ) {}
+
+    /**
+     * Create from API response array.
+     *
+     * @param array<string, mixed> $data
+     */
+    public static function fromArray(array $data): self
+    {
+        return new self(
+            name: $data['name'],
+            requiredCredentials: $data['requiredCredentials'],
+            optionalCredentials: $data['optionalCredentials'],
+            capabilities: $data['capabilities'],
+            apiDocUrl: $data['apiDocUrl'] ?? null,
+        );
+    }
+}
+
+/**
+ * The DNS providers credentials can be saved for
+ */
+class DnsProvidersResponse
+{
+    public function __construct(
+        public readonly array $providers,
+        public readonly int $count,
+    ) {}
+
+    /**
+     * Create from API response array.
+     *
+     * @param array<string, mixed> $data
+     */
+    public static function fromArray(array $data): self
+    {
+        return new self(
+            providers: $data['providers'],
+            count: $data['count'],
+        );
+    }
+}
+
+/**
+ * The keypair stored
+ */
+class HitlKeysPutResponse
+{
+    public function __construct(
+        public readonly string $kid,
+        public readonly string $message,
+    ) {}
+
+    /**
+     * Create from API response array.
+     *
+     * @param array<string, mixed> $data
+     */
+    public static function fromArray(array $data): self
+    {
+        return new self(
+            kid: $data['kid'],
+            message: $data['message'],
+        );
+    }
+}
+
+/**
+ * A HITL config's keypair. A caller with `hitl:read` (or a dashboard session) gets every field; a key holding `confirmations:create` without `hitl:read` gets `public_key` and `kid` only.
+ */
+class HitlKeysResponse
+{
+    public function __construct(
+        public readonly ?string $public_key,
+        public readonly string $kid,
+        public readonly ?string $encrypted_private_key = null,
+        public readonly ?string $kdf_salt = null,
+        public readonly ?string $wrapped_dek = null,
+        public readonly ?string $dek_iv = null,
+        public readonly ?string $dek_tag = null,
+        public readonly ?string $backup_wrapped_dek = null,
+        public readonly ?string $backup_dek_iv = null,
+        public readonly ?string $backup_dek_tag = null,
+    ) {}
+
+    /**
+     * Create from API response array.
+     *
+     * @param array<string, mixed> $data
+     */
+    public static function fromArray(array $data): self
+    {
+        return new self(
+            public_key: $data['public_key'] ?? null,
+            kid: $data['kid'],
+            encrypted_private_key: $data['encrypted_private_key'] ?? null,
+            kdf_salt: $data['kdf_salt'] ?? null,
+            wrapped_dek: $data['wrapped_dek'] ?? null,
+            dek_iv: $data['dek_iv'] ?? null,
+            dek_tag: $data['dek_tag'] ?? null,
+            backup_wrapped_dek: $data['backup_wrapped_dek'] ?? null,
+            backup_dek_iv: $data['backup_dek_iv'] ?? null,
+            backup_dek_tag: $data['backup_dek_tag'] ?? null,
         );
     }
 }
@@ -1615,6 +1977,36 @@ class ApiKeyUsageResponse
     }
 }
 
+/**
+ * Whether the signed-in caller holds saved DNS provider credentials that can verify this domain asset
+ */
+class AssetCredentialsCheck
+{
+    public function __construct(
+        public readonly bool $authenticated,
+        public readonly bool $has_credentials,
+        public readonly ?string $message = null,
+        public readonly ?array $credentials = null,
+        public readonly ?string $domain = null,
+    ) {}
+
+    /**
+     * Create from API response array.
+     *
+     * @param array<string, mixed> $data
+     */
+    public static function fromArray(array $data): self
+    {
+        return new self(
+            authenticated: $data['authenticated'],
+            has_credentials: $data['has_credentials'],
+            message: $data['message'] ?? null,
+            credentials: $data['credentials'] ?? null,
+            domain: $data['domain'] ?? null,
+        );
+    }
+}
+
 class AvailableAssetsQuery
 {
     public function __construct(
@@ -1919,6 +2311,9 @@ class CircleMemberListResponse
  */
 class Confirmation
 {
+    /**
+     * @param list<ConfirmationResend>|null $resends
+     */
     public function __construct(
         public readonly string $id,
         public readonly mixed $hitl_id,
@@ -1930,6 +2325,7 @@ class Confirmation
         public readonly ?string $timeout_at = null,
         public readonly ?string $proof_token = null,
         public readonly ?string $resolved_at = null,
+        public readonly ?array $resends = null,
     ) {}
 
     /**
@@ -1950,6 +2346,7 @@ class Confirmation
             timeout_at: $data['timeout_at'] ?? null,
             proof_token: $data['proof_token'] ?? null,
             resolved_at: $data['resolved_at'] ?? null,
+            resends: isset($data['resends']) ? array_map(static fn (array $item) => ConfirmationResend::fromArray($item), $data['resends']) : null,
         );
     }
 }
@@ -1966,6 +2363,7 @@ class ConfirmationListQuery
         public readonly ?string $hitl_id = null,
         public readonly ?string $start_date = null,
         public readonly ?string $end_date = null,
+        public readonly ?string $profile_id = null,
     ) {}
 
     /**
@@ -1982,6 +2380,7 @@ class ConfirmationListQuery
             hitl_id: $data['hitl_id'] ?? null,
             start_date: $data['start_date'] ?? null,
             end_date: $data['end_date'] ?? null,
+            profile_id: $data['profile_id'] ?? null,
         );
     }
 }
@@ -2014,6 +2413,32 @@ class ConfirmationListResponse
 }
 
 /**
+ * Counts only — the response never carries a link
+ */
+class ConfirmationResendResponse
+{
+    public function __construct(
+        public readonly string $confirmation_id,
+        public readonly int $resent,
+        public readonly int $skipped,
+    ) {}
+
+    /**
+     * Create from API response array.
+     *
+     * @param array<string, mixed> $data
+     */
+    public static function fromArray(array $data): self
+    {
+        return new self(
+            confirmation_id: $data['confirmation_id'],
+            resent: $data['resent'],
+            skipped: $data['skipped'],
+        );
+    }
+}
+
+/**
  * Body of `confirmation.approved` / `confirmation.denied`. A timeout is `confirmation.denied` with `response.channel` `system` and `response.text` `timeout`.
  */
 class ConfirmationWebhookPayload
@@ -2028,6 +2453,7 @@ class ConfirmationWebhookPayload
         public readonly ?array $response = null,
         public readonly ?string $proof_token = null,
         public readonly ?string $resolved_at = null,
+        public readonly ?string $profile_id = null,
     ) {}
 
     /**
@@ -2047,6 +2473,7 @@ class ConfirmationWebhookPayload
             response: $data['response'] ?? null,
             proof_token: $data['proof_token'] ?? null,
             resolved_at: $data['resolved_at'] ?? null,
+            profile_id: $data['profile_id'] ?? null,
         );
     }
 }
@@ -2364,6 +2791,71 @@ class DelegationWithToken
 }
 
 /**
+ * A saved DNS provider credential. The secret is never returned.
+ */
+class DnsCredentialResponse
+{
+    public function __construct(
+        public readonly string $id,
+        public readonly string $provider,
+        public readonly string $name,
+        public readonly bool $is_valid,
+        public readonly int $domains_count,
+        public readonly string $created_at,
+        public readonly string $updated_at,
+        public readonly ?string $last_used_at = null,
+        public readonly ?string $last_validated_at = null,
+        public readonly ?string $validation_error = null,
+    ) {}
+
+    /**
+     * Create from API response array.
+     *
+     * @param array<string, mixed> $data
+     */
+    public static function fromArray(array $data): self
+    {
+        return new self(
+            id: $data['id'],
+            provider: $data['provider'],
+            name: $data['name'],
+            is_valid: $data['is_valid'],
+            domains_count: $data['domains_count'],
+            created_at: $data['created_at'],
+            updated_at: $data['updated_at'],
+            last_used_at: $data['last_used_at'] ?? null,
+            last_validated_at: $data['last_validated_at'] ?? null,
+            validation_error: $data['validation_error'] ?? null,
+        );
+    }
+}
+
+/**
+ * The account's saved DNS provider credentials, ordered by provider
+ */
+class DnsCredentialListResponse
+{
+    /**
+     * @param list<DnsCredentialResponse> $data
+     */
+    public function __construct(
+        public readonly array $data,
+    ) {}
+
+    /**
+     * Create from API response array.
+     *
+     * @param array<string, mixed> $data
+     */
+    public static function fromArray(array $data): self
+    {
+        return new self(
+            data: array_map(static fn (array $item) => DnsCredentialResponse::fromArray($item), $data['data']),
+        );
+    }
+}
+
+/**
  * HITL configuration with messaging channels and timeout
  */
 class Hitl
@@ -2403,6 +2895,61 @@ class Hitl
             name: $data['name'] ?? null,
             profile_id: $data['profile_id'] ?? null,
             circle_id: $data['circle_id'] ?? null,
+        );
+    }
+}
+
+/**
+ * An enrolled approver's public key. `authorization_id` is the approver's consent, which a v2 envelope is keyed by. `recipient` and `channel` are absent for a key holding `confirmations:create` without `hitl:read`.
+ */
+class HitlApproverKey
+{
+    public function __construct(
+        public readonly string $authorization_id,
+        public readonly ?string $public_key,
+        public readonly string $kid,
+        public readonly ?string $recipient = null,
+        public readonly ?string $channel = null,
+    ) {}
+
+    /**
+     * Create from API response array.
+     *
+     * @param array<string, mixed> $data
+     */
+    public static function fromArray(array $data): self
+    {
+        return new self(
+            authorization_id: $data['authorization_id'],
+            public_key: $data['public_key'] ?? null,
+            kid: $data['kid'],
+            recipient: $data['recipient'] ?? null,
+            channel: $data['channel'] ?? null,
+        );
+    }
+}
+
+/**
+ * The approvers enrolled against a HITL config with a live consent
+ */
+class HitlApproverKeysResponse
+{
+    /**
+     * @param list<HitlApproverKey> $approver_keys
+     */
+    public function __construct(
+        public readonly array $approver_keys,
+    ) {}
+
+    /**
+     * Create from API response array.
+     *
+     * @param array<string, mixed> $data
+     */
+    public static function fromArray(array $data): self
+    {
+        return new self(
+            approver_keys: array_map(static fn (array $item) => HitlApproverKey::fromArray($item), $data['approver_keys']),
         );
     }
 }
@@ -2509,6 +3056,258 @@ class HitlListResponse
 }
 
 /**
+ * An artifact whose name resembles one of the brand tokens, with the evidence checked
+ */
+class LookalikeAlert
+{
+    public function __construct(
+        public readonly string $id,
+        public readonly string $registry,
+        public readonly string $artifact_name,
+        public readonly ?string $canonical_id,
+        public readonly string $match_kind,
+        public readonly string $brand_token,
+        public readonly string $match_evidence,
+        public readonly array $evidence,
+        public readonly string $first_seen_at,
+        public readonly ?string $notified_at,
+        public readonly string $created_at,
+    ) {}
+
+    /**
+     * Create from API response array.
+     *
+     * @param array<string, mixed> $data
+     */
+    public static function fromArray(array $data): self
+    {
+        return new self(
+            id: $data['id'],
+            registry: $data['registry'],
+            artifact_name: $data['artifact_name'],
+            canonical_id: $data['canonical_id'] ?? null,
+            match_kind: $data['match_kind'],
+            brand_token: $data['brand_token'],
+            match_evidence: $data['match_evidence'],
+            evidence: $data['evidence'],
+            first_seen_at: $data['first_seen_at'],
+            notified_at: $data['notified_at'] ?? null,
+            created_at: $data['created_at'],
+        );
+    }
+}
+
+/**
+ * A page of alerts, newest first
+ */
+class LookalikeAlertList
+{
+    /**
+     * @param list<LookalikeAlert> $data
+     */
+    public function __construct(
+        public readonly array $data,
+        public readonly array $pagination,
+    ) {}
+
+    /**
+     * Create from API response array.
+     *
+     * @param array<string, mixed> $data
+     */
+    public static function fromArray(array $data): self
+    {
+        return new self(
+            data: array_map(static fn (array $item) => LookalikeAlert::fromArray($item), $data['data']),
+            pagination: $data['pagination'],
+        );
+    }
+}
+
+/**
+ * One month's report; a month with no alerts is a report too
+ */
+class LookalikeReport
+{
+    public function __construct(
+        public readonly string $id,
+        public readonly string $period,
+        public readonly string $period_start,
+        public readonly string $period_end,
+        public readonly int $alert_count,
+        public readonly array $artifacts_checked,
+        public readonly array $bounds,
+        public readonly ?string $sent_at,
+    ) {}
+
+    /**
+     * Create from API response array.
+     *
+     * @param array<string, mixed> $data
+     */
+    public static function fromArray(array $data): self
+    {
+        return new self(
+            id: $data['id'],
+            period: $data['period'],
+            period_start: $data['period_start'],
+            period_end: $data['period_end'],
+            alert_count: $data['alert_count'],
+            artifacts_checked: $data['artifacts_checked'],
+            bounds: $data['bounds'],
+            sent_at: $data['sent_at'] ?? null,
+        );
+    }
+}
+
+/**
+ * A page of monthly reports, latest first
+ */
+class LookalikeReportList
+{
+    /**
+     * @param list<LookalikeReport> $data
+     */
+    public function __construct(
+        public readonly array $data,
+        public readonly array $pagination,
+    ) {}
+
+    /**
+     * Create from API response array.
+     *
+     * @param array<string, mixed> $data
+     */
+    public static function fromArray(array $data): self
+    {
+        return new self(
+            data: array_map(static fn (array $item) => LookalikeReport::fromArray($item), $data['data']),
+            pagination: $data['pagination'],
+        );
+    }
+}
+
+/**
+ * The account's Lookalike Watch subscription. Subscribe, read and cancel all answer it; only the cancel answer reads `canceled`, since a read after cancelling answers 404.
+ */
+class LookalikeWatchSubscription
+{
+    public function __construct(
+        public readonly string $id,
+        public readonly string $status,
+        public readonly array $brand_tokens,
+        public readonly array $owned_namespaces,
+        public readonly string $notify_email,
+        public readonly ?string $activated_at,
+        public readonly ?string $last_report_period,
+        public readonly string $created_at,
+        public readonly string $updated_at,
+    ) {}
+
+    /**
+     * Create from API response array.
+     *
+     * @param array<string, mixed> $data
+     */
+    public static function fromArray(array $data): self
+    {
+        return new self(
+            id: $data['id'],
+            status: $data['status'],
+            brand_tokens: $data['brand_tokens'],
+            owned_namespaces: $data['owned_namespaces'],
+            notify_email: $data['notify_email'],
+            activated_at: $data['activated_at'] ?? null,
+            last_report_period: $data['last_report_period'] ?? null,
+            created_at: $data['created_at'],
+            updated_at: $data['updated_at'],
+        );
+    }
+}
+
+/**
+ * What a plan change would cost now and when it would take effect. Nothing is changed.
+ */
+class PlanChangePreviewResponse
+{
+    public function __construct(
+        public readonly string $plan,
+        public readonly string $change,
+        public readonly int $amount_due,
+        public readonly string $currency,
+        public readonly ?string $effective_at,
+    ) {}
+
+    /**
+     * Create from API response array.
+     *
+     * @param array<string, mixed> $data
+     */
+    public static function fromArray(array $data): self
+    {
+        return new self(
+            plan: $data['plan'],
+            change: $data['change'],
+            amount_due: $data['amount_due'],
+            currency: $data['currency'],
+            effective_at: $data['effective_at'] ?? null,
+        );
+    }
+}
+
+/**
+ * The plan to move to. Custom is agreed per customer and cannot be chosen here.
+ */
+class PlanChangeRequest
+{
+    public function __construct(
+        public readonly string $plan,
+    ) {}
+
+    /**
+     * Create from API response array.
+     *
+     * @param array<string, mixed> $data
+     */
+    public static function fromArray(array $data): self
+    {
+        return new self(
+            plan: $data['plan'],
+        );
+    }
+}
+
+/**
+ * The outcome of a plan change
+ */
+class PlanChangeResponse
+{
+    public function __construct(
+        public readonly string $plan,
+        public readonly string $change,
+        public readonly string $status,
+        public readonly ?string $effective_at,
+        public readonly ?string $payment_url,
+    ) {}
+
+    /**
+     * Create from API response array.
+     *
+     * @param array<string, mixed> $data
+     */
+    public static function fromArray(array $data): self
+    {
+        return new self(
+            plan: $data['plan'],
+            change: $data['change'],
+            status: $data['status'],
+            effective_at: $data['effective_at'] ?? null,
+            payment_url: $data['payment_url'] ?? null,
+        );
+    }
+}
+
+/**
  * Everything needed to embed the verification badge for a username (proof.holdings/badge/{username})
  */
 class ProfileBadgeResponse
@@ -2545,6 +3344,38 @@ class ProfileBadgeResponse
 }
 
 /**
+ * A custom link on a sub-account, as stored (with its id)
+ */
+class ProfileOwnerLink
+{
+    public function __construct(
+        public readonly string $_id,
+        public readonly string $title,
+        public readonly string $url,
+        public readonly bool $is_visible,
+        public readonly int $display_order,
+        public readonly ?string $icon = null,
+    ) {}
+
+    /**
+     * Create from API response array.
+     *
+     * @param array<string, mixed> $data
+     */
+    public static function fromArray(array $data): self
+    {
+        return new self(
+            _id: $data['_id'],
+            title: $data['title'],
+            url: $data['url'],
+            is_visible: $data['is_visible'],
+            display_order: $data['display_order'],
+            icon: $data['icon'] ?? null,
+        );
+    }
+}
+
+/**
  * Body for a profile-scoped template write. Distinct from the account-level `TemplateContent`: it also accepts `is_active`, which every read of the template returns — declaring `TemplateContent` here published a field callers could read and had no documented way to set.
  */
 class ProfileTemplateContent
@@ -2570,6 +3401,176 @@ class ProfileTemplateContent
             button_text: $data['button_text'] ?? null,
             button_url_template: $data['button_url_template'] ?? null,
             is_active: $data['is_active'] ?? null,
+        );
+    }
+}
+
+/**
+ * A proof the owner chose to show on a sub-account, as the owner sees it
+ */
+class PublicProofItem
+{
+    public function __construct(
+        public readonly string $asset_id,
+        public readonly string $type,
+        public readonly string $display_value,
+        public readonly string $verified_at,
+        public readonly bool $is_visible,
+        public readonly int $display_order,
+        public readonly string $mask_level,
+        public readonly ?string $label = null,
+        public readonly ?string $channel = null,
+        public readonly ?bool $is_revoked = null,
+        public readonly ?string $delegate_type = null,
+        public readonly ?string $delegation_id = null,
+    ) {}
+
+    /**
+     * Create from API response array.
+     *
+     * @param array<string, mixed> $data
+     */
+    public static function fromArray(array $data): self
+    {
+        return new self(
+            asset_id: $data['asset_id'],
+            type: $data['type'],
+            display_value: $data['display_value'],
+            verified_at: $data['verified_at'],
+            is_visible: $data['is_visible'],
+            display_order: $data['display_order'],
+            mask_level: $data['mask_level'],
+            label: $data['label'] ?? null,
+            channel: $data['channel'] ?? null,
+            is_revoked: $data['is_revoked'] ?? null,
+            delegate_type: $data['delegate_type'] ?? null,
+            delegation_id: $data['delegation_id'] ?? null,
+        );
+    }
+}
+
+/**
+ * A sub-account as its owner sees it
+ */
+class ProfileOwnerResponse
+{
+    /**
+     * @param list<PublicProofItem> $public_proofs
+     * @param list<ProfileOwnerLink> $custom_links
+     */
+    public function __construct(
+        public readonly string $id,
+        public readonly string $profile_id,
+        public readonly bool $is_primary,
+        public readonly string $verification_level,
+        public readonly bool $is_business,
+        public readonly array $public_proofs,
+        public readonly string $proof_order,
+        public readonly array $custom_links,
+        public readonly ProfileTheme $theme,
+        public readonly bool $is_public,
+        public readonly bool $show_verification_dates,
+        public readonly bool $show_proof_channels,
+        public readonly bool $show_delegations,
+        public readonly ?string $support_email,
+        public readonly ?string $email_theme,
+        public readonly int $view_count,
+        public readonly string $created_at,
+        public readonly string $updated_at,
+        public readonly ?string $username = null,
+        public readonly ?string $display_name = null,
+        public readonly ?string $bio = null,
+        public readonly ?string $avatar_url = null,
+        public readonly ?string $business_name = null,
+    ) {}
+
+    /**
+     * Create from API response array.
+     *
+     * @param array<string, mixed> $data
+     */
+    public static function fromArray(array $data): self
+    {
+        return new self(
+            id: $data['id'],
+            profile_id: $data['profile_id'],
+            is_primary: $data['is_primary'],
+            verification_level: $data['verification_level'],
+            is_business: $data['is_business'],
+            public_proofs: array_map(static fn (array $item) => PublicProofItem::fromArray($item), $data['public_proofs']),
+            proof_order: $data['proof_order'],
+            custom_links: array_map(static fn (array $item) => ProfileOwnerLink::fromArray($item), $data['custom_links']),
+            theme: ProfileTheme::fromArray($data['theme']),
+            is_public: $data['is_public'],
+            show_verification_dates: $data['show_verification_dates'],
+            show_proof_channels: $data['show_proof_channels'],
+            show_delegations: $data['show_delegations'],
+            support_email: $data['support_email'] ?? null,
+            email_theme: $data['email_theme'] ?? null,
+            view_count: $data['view_count'],
+            created_at: $data['created_at'],
+            updated_at: $data['updated_at'],
+            username: $data['username'] ?? null,
+            display_name: $data['display_name'] ?? null,
+            bio: $data['bio'] ?? null,
+            avatar_url: $data['avatar_url'] ?? null,
+            business_name: $data['business_name'] ?? null,
+        );
+    }
+}
+
+/**
+ * The account's sub-accounts, as their owner sees them
+ */
+class ProfileOwnerListResponse
+{
+    /**
+     * @param list<ProfileOwnerResponse> $profiles
+     */
+    public function __construct(
+        public readonly array $profiles,
+        public readonly int $count,
+        public readonly int $max_profiles,
+    ) {}
+
+    /**
+     * Create from API response array.
+     *
+     * @param array<string, mixed> $data
+     */
+    public static function fromArray(array $data): self
+    {
+        return new self(
+            profiles: array_map(static fn (array $item) => ProfileOwnerResponse::fromArray($item), $data['profiles']),
+            count: $data['count'],
+            max_profiles: $data['max_profiles'],
+        );
+    }
+}
+
+/**
+ * A sub-account's shown proofs after an update
+ */
+class PublicProofsResponse
+{
+    /**
+     * @param list<PublicProofItem> $public_proofs
+     */
+    public function __construct(
+        public readonly array $public_proofs,
+        public readonly string $proof_order,
+    ) {}
+
+    /**
+     * Create from API response array.
+     *
+     * @param array<string, mixed> $data
+     */
+    public static function fromArray(array $data): self
+    {
+        return new self(
+            public_proofs: array_map(static fn (array $item) => PublicProofItem::fromArray($item), $data['public_proofs']),
+            proof_order: $data['proof_order'],
         );
     }
 }
@@ -2634,6 +3635,32 @@ class ReadinessResponse
             ready: $data['ready'],
             checks: $data['checks'],
             timestamp: $data['timestamp'],
+        );
+    }
+}
+
+/**
+ * The session renewed; the new tokens travel in cookies. camelCase as sent; kept as it is because the dashboard reads these names.
+ */
+class RefreshSessionResponse
+{
+    public function __construct(
+        public readonly bool $success,
+        public readonly string $expiresAt,
+        public readonly int $expiresIn,
+    ) {}
+
+    /**
+     * Create from API response array.
+     *
+     * @param array<string, mixed> $data
+     */
+    public static function fromArray(array $data): self
+    {
+        return new self(
+            success: $data['success'],
+            expiresAt: $data['expiresAt'],
+            expiresIn: $data['expiresIn'],
         );
     }
 }
@@ -2763,6 +3790,92 @@ class SetMasterKeyBody
 }
 
 /**
+ * The verification link was emailed
+ */
+class ShareVerificationRequestEmailResponse
+{
+    public function __construct(
+        public readonly bool $success,
+        public readonly string $message,
+        public readonly ?string $messageId = null,
+    ) {}
+
+    /**
+     * Create from API response array.
+     *
+     * @param array<string, mixed> $data
+     */
+    public static function fromArray(array $data): self
+    {
+        return new self(
+            success: $data['success'],
+            message: $data['message'],
+            messageId: $data['messageId'] ?? null,
+        );
+    }
+}
+
+/**
+ * Our SMS numbers, one entry per region and always all three. A region with no number configured carries an empty `did` and no QR code.
+ */
+class SmsNumbersByRegion
+{
+    public function __construct(
+        public readonly SessionSmsNumber $americas,
+        public readonly SessionSmsNumber $europe,
+        public readonly SessionSmsNumber $israel,
+    ) {}
+
+    /**
+     * Create from API response array.
+     *
+     * @param array<string, mixed> $data
+     */
+    public static function fromArray(array $data): self
+    {
+        return new self(
+            americas: SessionSmsNumber::fromArray($data['americas']),
+            europe: SessionSmsNumber::fromArray($data['europe']),
+            israel: SessionSmsNumber::fromArray($data['israel']),
+        );
+    }
+}
+
+/**
+ * The account's subscription
+ */
+class SubscriptionResponse
+{
+    public function __construct(
+        public readonly string $plan,
+        public readonly ?string $status,
+        public readonly ?string $current_period_start,
+        public readonly ?string $current_period_end,
+        public readonly bool $cancel_at_period_end,
+        public readonly ?string $scheduled_plan = null,
+        public readonly ?string $scheduled_change_at = null,
+    ) {}
+
+    /**
+     * Create from API response array.
+     *
+     * @param array<string, mixed> $data
+     */
+    public static function fromArray(array $data): self
+    {
+        return new self(
+            plan: $data['plan'],
+            status: $data['status'] ?? null,
+            current_period_start: $data['current_period_start'] ?? null,
+            current_period_end: $data['current_period_end'] ?? null,
+            cancel_at_period_end: $data['cancel_at_period_end'],
+            scheduled_plan: $data['scheduled_plan'] ?? null,
+            scheduled_change_at: $data['scheduled_change_at'] ?? null,
+        );
+    }
+}
+
+/**
  * Account summary query parameters
  */
 class SummaryQueryParams
@@ -2817,7 +3930,7 @@ class SuspendProofResponse
 /**
  * A message template as resolved for one public profile — either the profile override or the inherited default.
  *
- * @deprecated Removed from the API (templates belong to a project: use the templates resource with the project's id); kept so code written for an earlier 1.x release keeps compiling, and dropped in the next major version.
+ * @deprecated Removed from the API (templates belong to a sub-account: use the templates resource with the sub-account's id); kept so code written for an earlier 1.x release keeps compiling, and dropped in the next major version.
  */
 class ProfileTemplate
 {
@@ -2903,6 +4016,172 @@ class TopUpResponse
 }
 
 /**
+ * No session started: choose which address the code goes to
+ */
+class TwoFactorEmailSelectionResponse
+{
+    public function __construct(
+        public readonly bool $requires_email_selection,
+        public readonly array $available_emails,
+        public readonly string $message,
+    ) {}
+
+    /**
+     * Create from API response array.
+     *
+     * @param array<string, mixed> $data
+     */
+    public static function fromArray(array $data): self
+    {
+        return new self(
+            requires_email_selection: $data['requires_email_selection'],
+            available_emails: $data['available_emails'],
+            message: $data['message'],
+        );
+    }
+}
+
+/**
+ * The step-up is complete
+ */
+class TwoFactorMagicLinkResponse
+{
+    public function __construct(
+        public readonly string $status,
+        public readonly string $action_type,
+        public readonly ?bool $already_verified = null,
+        public readonly ?string $verified_at = null,
+        public readonly ?string $grant_expires_at = null,
+        public readonly ?bool $grant_single_use = null,
+    ) {}
+
+    /**
+     * Create from API response array.
+     *
+     * @param array<string, mixed> $data
+     */
+    public static function fromArray(array $data): self
+    {
+        return new self(
+            status: $data['status'],
+            action_type: $data['action_type'],
+            already_verified: $data['already_verified'] ?? null,
+            verified_at: $data['verified_at'] ?? null,
+            grant_expires_at: $data['grant_expires_at'] ?? null,
+            grant_single_use: $data['grant_single_use'] ?? null,
+        );
+    }
+}
+
+/**
+ * A started 2FA session
+ */
+class TwoFactorSessionResponse
+{
+    public function __construct(
+        public readonly string $session_id,
+        public readonly string $channel,
+        public readonly string $status,
+        public readonly string $expires_at,
+        public readonly string $instructions,
+        public readonly ?bool $second_method_recommended = null,
+        public readonly ?string $deep_link = null,
+        public readonly ?string $qr_code = null,
+        public readonly ?string $qr_text = null,
+        public readonly ?string $sms_code = null,
+        public readonly ?string $sms_message = null,
+        public readonly ?SmsNumbersByRegion $sms_dids = null,
+        public readonly ?string $email = null,
+        public readonly ?bool $email_sent = null,
+    ) {}
+
+    /**
+     * Create from API response array.
+     *
+     * @param array<string, mixed> $data
+     */
+    public static function fromArray(array $data): self
+    {
+        return new self(
+            session_id: $data['session_id'],
+            channel: $data['channel'],
+            status: $data['status'],
+            expires_at: $data['expires_at'],
+            instructions: $data['instructions'],
+            second_method_recommended: $data['second_method_recommended'] ?? null,
+            deep_link: $data['deep_link'] ?? null,
+            qr_code: $data['qr_code'] ?? null,
+            qr_text: $data['qr_text'] ?? null,
+            sms_code: $data['sms_code'] ?? null,
+            sms_message: $data['sms_message'] ?? null,
+            sms_dids: isset($data['sms_dids']) ? SmsNumbersByRegion::fromArray($data['sms_dids']) : null,
+            email: $data['email'] ?? null,
+            email_sent: $data['email_sent'] ?? null,
+        );
+    }
+}
+
+/**
+ * A 2FA session's state; the grant fields are present once `status` is `verified`
+ */
+class TwoFactorStatusResponse
+{
+    public function __construct(
+        public readonly string $session_id,
+        public readonly string $status,
+        public readonly string $action_type,
+        public readonly ?string $verified_at = null,
+        public readonly ?string $grant_expires_at = null,
+        public readonly ?bool $grant_single_use = null,
+    ) {}
+
+    /**
+     * Create from API response array.
+     *
+     * @param array<string, mixed> $data
+     */
+    public static function fromArray(array $data): self
+    {
+        return new self(
+            session_id: $data['session_id'],
+            status: $data['status'],
+            action_type: $data['action_type'],
+            verified_at: $data['verified_at'] ?? null,
+            grant_expires_at: $data['grant_expires_at'] ?? null,
+            grant_single_use: $data['grant_single_use'] ?? null,
+        );
+    }
+}
+
+/**
+ * The step-up is complete and its grant stored
+ */
+class TwoFactorVerifyResponse
+{
+    public function __construct(
+        public readonly string $status,
+        public readonly string $verified_at,
+        public readonly string $grant_expires_at,
+        public readonly bool $grant_single_use,
+    ) {}
+
+    /**
+     * Create from API response array.
+     *
+     * @param array<string, mixed> $data
+     */
+    public static function fromArray(array $data): self
+    {
+        return new self(
+            status: $data['status'],
+            verified_at: $data['verified_at'],
+            grant_expires_at: $data['grant_expires_at'],
+            grant_single_use: $data['grant_single_use'],
+        );
+    }
+}
+
+/**
  * Request body for updating an authorization's owner-editable metadata (F22)
  */
 class UpdateAuthorizationBody
@@ -2949,6 +4228,46 @@ class UpdateCircleBody
 }
 
 /**
+ * The whole company profile; a save replaces it. A VAT number must be an EU number belonging to `country` — refused otherwise with `400 vat_number_not_eu`, `vat_country_mismatch` or `vat_number_invalid`; neither a number nor `no_vat_number` is `400 vat_number_required`.
+ */
+class UpdateCompanyRequest
+{
+    public function __construct(
+        public readonly string $legal_name,
+        public readonly string $country,
+        public readonly string $address_line1,
+        public readonly string $city,
+        public readonly string $postal_code,
+        public readonly string $billing_email,
+        public readonly ?string $registration_code = null,
+        public readonly ?string $vat_number = null,
+        public readonly ?bool $no_vat_number = null,
+        public readonly ?string $address_line2 = null,
+    ) {}
+
+    /**
+     * Create from API response array.
+     *
+     * @param array<string, mixed> $data
+     */
+    public static function fromArray(array $data): self
+    {
+        return new self(
+            legal_name: $data['legal_name'],
+            country: $data['country'],
+            address_line1: $data['address_line1'],
+            city: $data['city'],
+            postal_code: $data['postal_code'],
+            billing_email: $data['billing_email'],
+            registration_code: $data['registration_code'] ?? null,
+            vat_number: $data['vat_number'] ?? null,
+            no_vat_number: $data['no_vat_number'] ?? null,
+            address_line2: $data['address_line2'] ?? null,
+        );
+    }
+}
+
+/**
  * Request body for updating a HITL configuration
  */
 class UpdateHitlBody
@@ -2970,6 +4289,184 @@ class UpdateHitlBody
             name: $data['name'] ?? null,
             channels: $data['channels'] ?? null,
             timeout_seconds: $data['timeout_seconds'] ?? null,
+        );
+    }
+}
+
+/**
+ * Fields to change. Moving to `all` drops `profile_ids`; `profile_ids` sent alone keeps a `selected` endpoint selected. A sub-account key can never widen an endpoint.
+ */
+class UpdateWebhookEndpointRequest
+{
+    public function __construct(
+        public readonly ?string $url = null,
+        public readonly ?array $events = null,
+        public readonly ?string $scope = null,
+        public readonly ?array $profile_ids = null,
+        public readonly ?string $status = null,
+        public readonly ?string $description = null,
+    ) {}
+
+    /**
+     * Create from API response array.
+     *
+     * @param array<string, mixed> $data
+     */
+    public static function fromArray(array $data): self
+    {
+        return new self(
+            url: $data['url'] ?? null,
+            events: $data['events'] ?? null,
+            scope: $data['scope'] ?? null,
+            profile_ids: $data['profile_ids'] ?? null,
+            status: $data['status'] ?? null,
+            description: $data['description'] ?? null,
+        );
+    }
+}
+
+/**
+ * The prepaid balance as `GET /me/billing/balance` reports it, without `billing_enabled` (the usage read carries that itself)
+ */
+class UsageBalance
+{
+    public function __construct(
+        public readonly array $balance,
+        public readonly int $low_balance_threshold,
+        public readonly array $top_up_amounts,
+        public readonly array $auto_top_up,
+    ) {}
+
+    /**
+     * Create from API response array.
+     *
+     * @param array<string, mixed> $data
+     */
+    public static function fromArray(array $data): self
+    {
+        return new self(
+            balance: $data['balance'],
+            low_balance_threshold: $data['low_balance_threshold'],
+            top_up_amounts: $data['top_up_amounts'],
+            auto_top_up: $data['auto_top_up'],
+        );
+    }
+}
+
+/**
+ * One month's production usage record
+ */
+class UsagePeriod
+{
+    public function __construct(
+        public readonly string $period,
+        public readonly int $total_verifications,
+        public readonly int $total_confirmations,
+        public readonly int $total_authorizations,
+        public readonly int $total_delegations,
+        public readonly array $by_type,
+        public readonly array $by_channel,
+        public readonly array $by_hitl_channel,
+    ) {}
+
+    /**
+     * Create from API response array.
+     *
+     * @param array<string, mixed> $data
+     */
+    public static function fromArray(array $data): self
+    {
+        return new self(
+            period: $data['period'],
+            total_verifications: $data['total_verifications'],
+            total_confirmations: $data['total_confirmations'],
+            total_authorizations: $data['total_authorizations'],
+            total_delegations: $data['total_delegations'],
+            by_type: $data['by_type'],
+            by_channel: $data['by_channel'],
+            by_hitl_channel: $data['by_hitl_channel'],
+        );
+    }
+}
+
+/**
+ * One channel's completion this period
+ */
+class UsageTopChannel
+{
+    public function __construct(
+        public readonly string $channel,
+        public readonly int $count,
+        public readonly float $completion_rate,
+    ) {}
+
+    /**
+     * Create from API response array.
+     *
+     * @param array<string, mixed> $data
+     */
+    public static function fromArray(array $data): self
+    {
+        return new self(
+            channel: $data['channel'],
+            count: $data['count'],
+            completion_rate: $data['completion_rate'],
+        );
+    }
+}
+
+/**
+ * Usage for the current billing period, with the months asked for
+ */
+class UsageResponse
+{
+    /**
+     * @param list<UsageTopChannel> $top_channels
+     * @param list<UsagePeriod> $periods
+     */
+    public function __construct(
+        public readonly string $plan,
+        public readonly int $limit,
+        public readonly bool $billing_enabled,
+        public readonly bool $card_on_file,
+        public readonly ?int $hard_limit,
+        public readonly UsageBalance $balance,
+        public readonly string $current_period,
+        public readonly int $current_usage,
+        public readonly int $percentage,
+        public readonly int $days_remaining,
+        public readonly int $projected_eom_usage,
+        public readonly ?bool $is_on_track,
+        public readonly bool $projection_unreliable,
+        public readonly array $top_channels,
+        public readonly array $channels_with_zero_completions,
+        public readonly array $periods,
+    ) {}
+
+    /**
+     * Create from API response array.
+     *
+     * @param array<string, mixed> $data
+     */
+    public static function fromArray(array $data): self
+    {
+        return new self(
+            plan: $data['plan'],
+            limit: $data['limit'],
+            billing_enabled: $data['billing_enabled'],
+            card_on_file: $data['card_on_file'],
+            hard_limit: $data['hard_limit'] ?? null,
+            balance: UsageBalance::fromArray($data['balance']),
+            current_period: $data['current_period'],
+            current_usage: $data['current_usage'],
+            percentage: $data['percentage'],
+            days_remaining: $data['days_remaining'],
+            projected_eom_usage: $data['projected_eom_usage'],
+            is_on_track: $data['is_on_track'] ?? null,
+            projection_unreliable: $data['projection_unreliable'],
+            top_channels: array_map(static fn (array $item) => UsageTopChannel::fromArray($item), $data['top_channels']),
+            channels_with_zero_completions: $data['channels_with_zero_completions'],
+            periods: array_map(static fn (array $item) => UsagePeriod::fromArray($item), $data['periods']),
         );
     }
 }
@@ -3010,6 +4507,222 @@ class UserAPIKeyListItem
             created_at: $data['created_at'],
             replaced_key_ids: $data['replaced_key_ids'],
             last_used_at: $data['last_used_at'] ?? null,
+        );
+    }
+}
+
+/**
+ * The result of one check of the published record or file
+ */
+class UserDomainVerificationCheckResponse
+{
+    public function __construct(
+        public readonly string $status,
+        public readonly ?string $verified_at = null,
+        public readonly ?array $asset = null,
+        public readonly ?string $message = null,
+    ) {}
+
+    /**
+     * Create from API response array.
+     *
+     * @param array<string, mixed> $data
+     */
+    public static function fromArray(array $data): self
+    {
+        return new self(
+            status: $data['status'],
+            verified_at: $data['verified_at'] ?? null,
+            asset: $data['asset'] ?? null,
+            message: $data['message'] ?? null,
+        );
+    }
+}
+
+/**
+ * A self-service domain verification session
+ */
+class UserDomainVerificationSessionResponse
+{
+    public function __construct(
+        public readonly string $session_id,
+        public readonly string $domain,
+        public readonly string $channel,
+        public readonly string $status,
+        public readonly string $expires_at,
+        public readonly array $challenge,
+    ) {}
+
+    /**
+     * Create from API response array.
+     *
+     * @param array<string, mixed> $data
+     */
+    public static function fromArray(array $data): self
+    {
+        return new self(
+            session_id: $data['session_id'],
+            domain: $data['domain'],
+            channel: $data['channel'],
+            status: $data['status'],
+            expires_at: $data['expires_at'],
+            challenge: $data['challenge'],
+        );
+    }
+}
+
+/**
+ * A self-service domain verification session's state
+ */
+class UserDomainVerificationStatusResponse
+{
+    public function __construct(
+        public readonly string $session_id,
+        public readonly string $domain,
+        public readonly string $channel,
+        public readonly string $status,
+        public readonly string $created_at,
+        public readonly ?string $verified_at = null,
+        public readonly ?array $challenge = null,
+    ) {}
+
+    /**
+     * Create from API response array.
+     *
+     * @param array<string, mixed> $data
+     */
+    public static function fromArray(array $data): self
+    {
+        return new self(
+            session_id: $data['session_id'],
+            domain: $data['domain'],
+            channel: $data['channel'],
+            status: $data['status'],
+            created_at: $data['created_at'],
+            verified_at: $data['verified_at'] ?? null,
+            challenge: $data['challenge'] ?? null,
+        );
+    }
+}
+
+/**
+ * An asset verified from the signed-in account's existing proof or saved DNS credentials, with the request's status and progress after it
+ */
+class AssetAutoVerifyResult
+{
+    public function __construct(
+        public readonly string $status,
+        public readonly string $verified_at,
+        public readonly string $request_status,
+        public readonly array $progress,
+        public readonly string $method,
+        public readonly ?string $original_verified_at = null,
+        public readonly ?string $provider = null,
+    ) {}
+
+    /**
+     * Create from API response array.
+     *
+     * @param array<string, mixed> $data
+     */
+    public static function fromArray(array $data): self
+    {
+        return new self(
+            status: $data['status'],
+            verified_at: $data['verified_at'],
+            request_status: $data['request_status'],
+            progress: $data['progress'],
+            method: $data['method'],
+            original_verified_at: $data['original_verified_at'] ?? null,
+            provider: $data['provider'] ?? null,
+        );
+    }
+}
+
+/**
+ * The asset, verified by the submitted code, with the request's status and progress after it. A wrong code answers 400.
+ */
+class AssetCodeSubmitResult
+{
+    public function __construct(
+        public readonly string $status,
+        public readonly string $verified_at,
+        public readonly string $request_status,
+        public readonly array $progress,
+    ) {}
+
+    /**
+     * Create from API response array.
+     *
+     * @param array<string, mixed> $data
+     */
+    public static function fromArray(array $data): self
+    {
+        return new self(
+            status: $data['status'],
+            verified_at: $data['verified_at'],
+            request_status: $data['request_status'],
+            progress: $data['progress'],
+        );
+    }
+}
+
+/**
+ * A DNS or HTTP check of a domain asset: verified (with the request's `request_status` and `progress` after it), or still pending with the attempts left. A record not found yet is this 200, not an error.
+ */
+class AssetVerificationCheckResult
+{
+    public function __construct(
+        public readonly string $status,
+        public readonly ?string $verified_at = null,
+        public readonly ?string $request_status = null,
+        public readonly ?array $progress = null,
+        public readonly ?string $message = null,
+        public readonly ?int $attempts_remaining = null,
+    ) {}
+
+    /**
+     * Create from API response array.
+     *
+     * @param array<string, mixed> $data
+     */
+    public static function fromArray(array $data): self
+    {
+        return new self(
+            status: $data['status'],
+            verified_at: $data['verified_at'] ?? null,
+            request_status: $data['request_status'] ?? null,
+            progress: $data['progress'] ?? null,
+            message: $data['message'] ?? null,
+            attempts_remaining: $data['attempts_remaining'] ?? null,
+        );
+    }
+}
+
+/**
+ * The request's new expiry
+ */
+class ExtendVerificationRequestResponse
+{
+    public function __construct(
+        public readonly bool $success,
+        public readonly string $message,
+        public readonly string $expires_at,
+        public readonly string $status,
+    ) {}
+
+    /**
+     * Create from API response array.
+     *
+     * @param array<string, mixed> $data
+     */
+    public static function fromArray(array $data): self
+    {
+        return new self(
+            success: $data['success'],
+            message: $data['message'],
+            expires_at: $data['expires_at'],
+            status: $data['status'],
         );
     }
 }
@@ -3130,6 +4843,156 @@ class MultiChannelVerificationResponse
 }
 
 /**
+ * A verification request the account was asked to complete
+ */
+class IncomingVerificationRequestListItem
+{
+    public function __construct(
+        public readonly string $id,
+        public readonly string $status,
+        public readonly array $computed_state,
+        public readonly string $action_type,
+        public readonly array $assets,
+        public readonly array $progress,
+        public readonly string $expires_at,
+        public readonly string $created_at,
+        public readonly ?string $reference_id = null,
+        public readonly ?string $completed_at = null,
+        public readonly ?array $requester = null,
+    ) {}
+
+    /**
+     * Create from API response array.
+     *
+     * @param array<string, mixed> $data
+     */
+    public static function fromArray(array $data): self
+    {
+        return new self(
+            id: $data['id'],
+            status: $data['status'],
+            computed_state: $data['computed_state'],
+            action_type: $data['action_type'],
+            assets: $data['assets'],
+            progress: $data['progress'],
+            expires_at: $data['expires_at'],
+            created_at: $data['created_at'],
+            reference_id: $data['reference_id'] ?? null,
+            completed_at: $data['completed_at'] ?? null,
+            requester: $data['requester'] ?? null,
+        );
+    }
+}
+
+/**
+ * The verification requests the account was asked to complete, newest first
+ */
+class IncomingVerificationRequestListResponse
+{
+    /**
+     * @param list<IncomingVerificationRequestListItem> $data
+     */
+    public function __construct(
+        public readonly array $data,
+        public readonly array $pagination,
+    ) {}
+
+    /**
+     * Create from API response array.
+     *
+     * @param array<string, mixed> $data
+     */
+    public static function fromArray(array $data): self
+    {
+        return new self(
+            data: array_map(static fn (array $item) => IncomingVerificationRequestListItem::fromArray($item), $data['data']),
+            pagination: $data['pagination'],
+        );
+    }
+}
+
+/**
+ * A verification request the account made, as its own list shows it. `public_profile_id` is the sub-account the request belongs to, absent when the request records no sub-account.
+ */
+class OwnVerificationRequestListItem
+{
+    public function __construct(
+        public readonly string $id,
+        public readonly string $status,
+        public readonly array $computed_state,
+        public readonly string $action_type,
+        public readonly string $source,
+        public readonly ?string $api_key_id,
+        public readonly ?string $api_key_model,
+        public readonly ?string $agent_name,
+        public readonly array $assets,
+        public readonly array $progress,
+        public readonly string $expires_at,
+        public readonly string $created_at,
+        public readonly ?string $reference_id = null,
+        public readonly ?string $completed_at = null,
+        public readonly ?array $branding = null,
+        public readonly ?string $public_profile_id = null,
+    ) {}
+
+    /**
+     * Create from API response array.
+     *
+     * @param array<string, mixed> $data
+     */
+    public static function fromArray(array $data): self
+    {
+        return new self(
+            id: $data['id'],
+            status: $data['status'],
+            computed_state: $data['computed_state'],
+            action_type: $data['action_type'],
+            source: $data['source'],
+            api_key_id: $data['api_key_id'] ?? null,
+            api_key_model: $data['api_key_model'] ?? null,
+            agent_name: $data['agent_name'] ?? null,
+            assets: $data['assets'],
+            progress: $data['progress'],
+            expires_at: $data['expires_at'],
+            created_at: $data['created_at'],
+            reference_id: $data['reference_id'] ?? null,
+            completed_at: $data['completed_at'] ?? null,
+            branding: $data['branding'] ?? null,
+            public_profile_id: $data['public_profile_id'] ?? null,
+        );
+    }
+}
+
+/**
+ * The verification requests the account made, newest first
+ */
+class OwnVerificationRequestListResponse
+{
+    /**
+     * @param list<OwnVerificationRequestListItem> $data
+     */
+    public function __construct(
+        public readonly array $data,
+        public readonly array $pagination,
+        public readonly array $stats,
+    ) {}
+
+    /**
+     * Create from API response array.
+     *
+     * @param array<string, mixed> $data
+     */
+    public static function fromArray(array $data): self
+    {
+        return new self(
+            data: array_map(static fn (array $item) => OwnVerificationRequestListItem::fromArray($item), $data['data']),
+            pagination: $data['pagination'],
+            stats: $data['stats'],
+        );
+    }
+}
+
+/**
  * An active asset offered for display on a public profile
  */
 class ProfileAssetOption
@@ -3141,6 +5004,7 @@ class ProfileAssetOption
         public readonly string $channel,
         public readonly bool $is_public,
         public readonly ?string $verified_at = null,
+        public readonly ?string $proof_expires_at = null,
     ) {}
 
     /**
@@ -3157,6 +5021,77 @@ class ProfileAssetOption
             channel: $data['channel'],
             is_public: $data['is_public'],
             verified_at: $data['verified_at'] ?? null,
+            proof_expires_at: $data['proof_expires_at'] ?? null,
+        );
+    }
+}
+
+/**
+ * A verification request as its recipient sees it: masked identifiers, branding and progress, never a proof token. `action_context` is null when the request carries none.
+ */
+class PublicVerificationRequest
+{
+    public function __construct(
+        public readonly string $id,
+        public readonly string $status,
+        public readonly string $action_type,
+        public readonly ?ActionContext $action_context,
+        public readonly ?array $business,
+        public readonly array $assets,
+        public readonly array $progress,
+        public readonly bool $partial_ok,
+        public readonly string $expires_at,
+        public readonly string $created_at,
+        public readonly ?string $redirect_url = null,
+        public readonly ?string $completed_at = null,
+    ) {}
+
+    /**
+     * Create from API response array.
+     *
+     * @param array<string, mixed> $data
+     */
+    public static function fromArray(array $data): self
+    {
+        return new self(
+            id: $data['id'],
+            status: $data['status'],
+            action_type: $data['action_type'],
+            action_context: isset($data['action_context']) ? ActionContext::fromArray($data['action_context']) : null,
+            business: $data['business'] ?? null,
+            assets: $data['assets'],
+            progress: $data['progress'],
+            partial_ok: $data['partial_ok'],
+            expires_at: $data['expires_at'],
+            created_at: $data['created_at'],
+            redirect_url: $data['redirect_url'] ?? null,
+            completed_at: $data['completed_at'] ?? null,
+        );
+    }
+}
+
+/**
+ * The address is now on the account
+ */
+class VerifyEmailOtpResponse
+{
+    public function __construct(
+        public readonly string $status,
+        public readonly string $email,
+        public readonly string $verified_at,
+    ) {}
+
+    /**
+     * Create from API response array.
+     *
+     * @param array<string, mixed> $data
+     */
+    public static function fromArray(array $data): self
+    {
+        return new self(
+            status: $data['status'],
+            email: $data['email'],
+            verified_at: $data['verified_at'],
         );
     }
 }
@@ -3167,10 +5102,11 @@ class ProfileAssetOption
 class SettingsResponse
 {
     public function __construct(
-        /** @deprecated Removed from the API (account-level branding is retired: each project (sub-account) carries its own branding, set with the profiles resource); kept so code written for an earlier 1.x release keeps compiling, and dropped in the next major version. */
+        /** @deprecated Removed from the API (account-level branding is retired: each sub-account carries its own branding, set with the profiles resource); kept so code written for an earlier 1.x release keeps compiling, and dropped in the next major version. */
         public readonly ?BrandingSettings $branding,
         public readonly WebhookSettingsResponse $webhook,
         public readonly ?int $proof_expiry_days,
+        public readonly ?array $hitl = null,
     ) {}
 
     /**
@@ -3184,6 +5120,7 @@ class SettingsResponse
             branding: isset($data['branding']) ? BrandingSettings::fromArray($data['branding']) : null,
             webhook: WebhookSettingsResponse::fromArray($data['webhook']),
             proof_expiry_days: $data['proof_expiry_days'] ?? null,
+            hitl: $data['hitl'] ?? null,
         );
     }
 }
@@ -3394,6 +5331,141 @@ class ConnectProviderRequest
     }
 }
 
+/**
+ * Whether one saved DNS credential can reach a domain
+ */
+class DomainCredentialAccess
+{
+    public function __construct(
+        public readonly string $provider,
+        public readonly string $name,
+        public readonly bool $has_access,
+        public readonly ?bool $is_registrar = null,
+        public readonly ?string $error = null,
+    ) {}
+
+    /**
+     * Create from API response array.
+     *
+     * @param array<string, mixed> $data
+     */
+    public static function fromArray(array $data): self
+    {
+        return new self(
+            provider: $data['provider'],
+            name: $data['name'],
+            has_access: $data['has_access'],
+            is_registrar: $data['is_registrar'] ?? null,
+            error: $data['error'] ?? null,
+        );
+    }
+}
+
+/**
+ * Which of the account's DNS credentials can reach a domain
+ */
+class DomainCredentialCheckResponse
+{
+    /**
+     * @param list<DomainCredentialAccess> $accessible_credentials
+     */
+    public function __construct(
+        public readonly bool $has_credentials,
+        public readonly array $accessible_credentials,
+        public readonly string $detected_provider,
+        public readonly ?bool $has_accessible_credential = null,
+        public readonly ?bool $has_registrar_credentials = null,
+        public readonly ?string $registrar_provider = null,
+        public readonly ?bool $can_try_ownership_verification = null,
+        public readonly ?string $suggestion = null,
+    ) {}
+
+    /**
+     * Create from API response array.
+     *
+     * @param array<string, mixed> $data
+     */
+    public static function fromArray(array $data): self
+    {
+        return new self(
+            has_credentials: $data['has_credentials'],
+            accessible_credentials: array_map(static fn (array $item) => DomainCredentialAccess::fromArray($item), $data['accessible_credentials']),
+            detected_provider: $data['detected_provider'],
+            has_accessible_credential: $data['has_accessible_credential'] ?? null,
+            has_registrar_credentials: $data['has_registrar_credentials'] ?? null,
+            registrar_provider: $data['registrar_provider'] ?? null,
+            can_try_ownership_verification: $data['can_try_ownership_verification'] ?? null,
+            suggestion: $data['suggestion'] ?? null,
+        );
+    }
+}
+
+/**
+ * A DNS record a domain needs, for ownership or for email sending
+ */
+class DomainDnsRecord
+{
+    public function __construct(
+        public readonly string $type,
+        public readonly string $name,
+        public readonly string $value,
+        public readonly string $purpose,
+        public readonly bool $verified,
+        public readonly ?int $priority = null,
+        public readonly ?string $verified_at = null,
+    ) {}
+
+    /**
+     * Create from API response array.
+     *
+     * @param array<string, mixed> $data
+     */
+    public static function fromArray(array $data): self
+    {
+        return new self(
+            type: $data['type'],
+            name: $data['name'],
+            value: $data['value'],
+            purpose: $data['purpose'],
+            verified: $data['verified'],
+            priority: $data['priority'] ?? null,
+            verified_at: $data['verified_at'] ?? null,
+        );
+    }
+}
+
+/**
+ * An email verification of the domain. The code itself is never returned.
+ */
+class DomainEmailVerificationState
+{
+    public function __construct(
+        public readonly string $email_prefix,
+        public readonly string $email_address,
+        public readonly string $expires_at,
+        public readonly int $attempts,
+        public readonly ?string $last_sent_at = null,
+        public readonly ?string $verified_at = null,
+    ) {}
+
+    /**
+     * Create from API response array.
+     *
+     * @param array<string, mixed> $data
+     */
+    public static function fromArray(array $data): self
+    {
+        return new self(
+            email_prefix: $data['email_prefix'],
+            email_address: $data['email_address'],
+            expires_at: $data['expires_at'],
+            attempts: $data['attempts'],
+            last_sent_at: $data['last_sent_at'] ?? null,
+            verified_at: $data['verified_at'] ?? null,
+        );
+    }
+}
+
 class DomainRemovedResponse
 {
     public function __construct(
@@ -3426,10 +5498,76 @@ class DomainRemovedResponse
 }
 
 /**
+ * Email-sending setup for a domain. Present once email sending has been set up.
+ */
+class DomainResendStatus
+{
+    /**
+     * @param list<DomainDnsRecord> $dkim_records
+     */
+    public function __construct(
+        public readonly string $status,
+        public readonly array $dkim_records,
+        public readonly ?string $domain_id = null,
+        public readonly ?string $registered_at = null,
+        public readonly ?string $verified_at = null,
+        public readonly ?string $last_checked_at = null,
+    ) {}
+
+    /**
+     * Create from API response array.
+     *
+     * @param array<string, mixed> $data
+     */
+    public static function fromArray(array $data): self
+    {
+        return new self(
+            status: $data['status'],
+            dkim_records: array_map(static fn (array $item) => DomainDnsRecord::fromArray($item), $data['dkim_records']),
+            domain_id: $data['domain_id'] ?? null,
+            registered_at: $data['registered_at'] ?? null,
+            verified_at: $data['verified_at'] ?? null,
+            last_checked_at: $data['last_checked_at'] ?? null,
+        );
+    }
+}
+
+/**
+ * How to show control of the domain by the method it is set to
+ */
+class DomainVerificationInstructions
+{
+    public function __construct(
+        public readonly string $method,
+        public readonly array $steps,
+        public readonly array $http_file,
+        public readonly ?array $dns_record = null,
+    ) {}
+
+    /**
+     * Create from API response array.
+     *
+     * @param array<string, mixed> $data
+     */
+    public static function fromArray(array $data): self
+    {
+        return new self(
+            method: $data['method'],
+            steps: $data['steps'],
+            http_file: $data['http_file'],
+            dns_record: $data['dns_record'] ?? null,
+        );
+    }
+}
+
+/**
  * Domain record
  */
 class Domain
 {
+    /**
+     * @param list<DomainDnsRecord>|null $dns_records
+     */
     public function __construct(
         public readonly string $id,
         public readonly string $domain,
@@ -3445,6 +5583,35 @@ class Domain
         public readonly ?string $proof_status = null,
         public readonly ?string $proof_revoked_reason = null,
         public readonly ?string $proof_expires_at = null,
+        public readonly ?string $detected_provider = null,
+        public readonly ?string $provider_name = null,
+        public readonly ?bool $supports_auto_dns = null,
+        public readonly ?string $verification_subtype = null,
+        public readonly ?bool $for_email_sending = null,
+        public readonly ?bool $for_verification = null,
+        public readonly ?array $dns_records = null,
+        public readonly ?string $actual_dns_host = null,
+        public readonly ?string $actual_dns_host_name = null,
+        public readonly ?bool $has_dns_mismatch = null,
+        public readonly ?string $dns_mismatch_warning = null,
+        public readonly ?string $txt_record_name = null,
+        public readonly ?string $txt_record_value = null,
+        public readonly ?string $http_file_path = null,
+        public readonly ?string $http_file_content = null,
+        public readonly ?string $oauth_url = null,
+        public readonly ?bool $oauth_connected = null,
+        public readonly ?bool $godaddy_connected = null,
+        public readonly ?bool $supports_api_token = null,
+        public readonly ?bool $supports_api_key = null,
+        public readonly ?bool $has_provider_credentials = null,
+        public readonly ?string $provider_credential_name = null,
+        public readonly ?string $from_email = null,
+        public readonly ?DomainResendStatus $resend = null,
+        public readonly ?DomainEmailVerificationState $email_verification = null,
+        public readonly ?array $verified_providers = null,
+        public readonly ?int $check_count = null,
+        public readonly ?string $last_checked_at = null,
+        public readonly ?string $error_message = null,
     ) {}
 
     /**
@@ -3469,6 +5636,35 @@ class Domain
             proof_status: $data['proof_status'] ?? null,
             proof_revoked_reason: $data['proof_revoked_reason'] ?? null,
             proof_expires_at: $data['proof_expires_at'] ?? null,
+            detected_provider: $data['detected_provider'] ?? null,
+            provider_name: $data['provider_name'] ?? null,
+            supports_auto_dns: $data['supports_auto_dns'] ?? null,
+            verification_subtype: $data['verification_subtype'] ?? null,
+            for_email_sending: $data['for_email_sending'] ?? null,
+            for_verification: $data['for_verification'] ?? null,
+            dns_records: isset($data['dns_records']) ? array_map(static fn (array $item) => DomainDnsRecord::fromArray($item), $data['dns_records']) : null,
+            actual_dns_host: $data['actual_dns_host'] ?? null,
+            actual_dns_host_name: $data['actual_dns_host_name'] ?? null,
+            has_dns_mismatch: $data['has_dns_mismatch'] ?? null,
+            dns_mismatch_warning: $data['dns_mismatch_warning'] ?? null,
+            txt_record_name: $data['txt_record_name'] ?? null,
+            txt_record_value: $data['txt_record_value'] ?? null,
+            http_file_path: $data['http_file_path'] ?? null,
+            http_file_content: $data['http_file_content'] ?? null,
+            oauth_url: $data['oauth_url'] ?? null,
+            oauth_connected: $data['oauth_connected'] ?? null,
+            godaddy_connected: $data['godaddy_connected'] ?? null,
+            supports_api_token: $data['supports_api_token'] ?? null,
+            supports_api_key: $data['supports_api_key'] ?? null,
+            has_provider_credentials: $data['has_provider_credentials'] ?? null,
+            provider_credential_name: $data['provider_credential_name'] ?? null,
+            from_email: $data['from_email'] ?? null,
+            resend: isset($data['resend']) ? DomainResendStatus::fromArray($data['resend']) : null,
+            email_verification: isset($data['email_verification']) ? DomainEmailVerificationState::fromArray($data['email_verification']) : null,
+            verified_providers: $data['verified_providers'] ?? null,
+            check_count: $data['check_count'] ?? null,
+            last_checked_at: $data['last_checked_at'] ?? null,
+            error_message: $data['error_message'] ?? null,
         );
     }
 }
@@ -3506,6 +5702,83 @@ class DomainCheckResponse
 }
 
 /**
+ * A domain with the steps to verify it
+ */
+class DomainDetailResponse
+{
+    public function __construct(
+        public readonly Domain $data,
+        public readonly DomainVerificationInstructions $instructions,
+    ) {}
+
+    /**
+     * Create from API response array.
+     *
+     * @param array<string, mixed> $data
+     */
+    public static function fromArray(array $data): self
+    {
+        return new self(
+            data: Domain::fromArray($data['data']),
+            instructions: DomainVerificationInstructions::fromArray($data['instructions']),
+        );
+    }
+}
+
+/**
+ * A verification code emailed to an address on the domain
+ */
+class DomainEmailVerificationResponse
+{
+    public function __construct(
+        public readonly Domain $data,
+        public readonly string $message,
+        public readonly ?string $email_sent_to = null,
+        public readonly ?int $expires_in_minutes = null,
+    ) {}
+
+    /**
+     * Create from API response array.
+     *
+     * @param array<string, mixed> $data
+     */
+    public static function fromArray(array $data): self
+    {
+        return new self(
+            data: Domain::fromArray($data['data']),
+            message: $data['message'],
+            email_sent_to: $data['email_sent_to'] ?? null,
+            expires_in_minutes: $data['expires_in_minutes'] ?? null,
+        );
+    }
+}
+
+/**
+ * The account's domains, newest first
+ */
+class DomainListResponse
+{
+    /**
+     * @param list<Domain> $data
+     */
+    public function __construct(
+        public readonly array $data,
+    ) {}
+
+    /**
+     * Create from API response array.
+     *
+     * @param array<string, mixed> $data
+     */
+    public static function fromArray(array $data): self
+    {
+        return new self(
+            data: array_map(static fn (array $item) => Domain::fromArray($item), $data['data']),
+        );
+    }
+}
+
+/**
  * Domain verification initiation response
  */
 class DomainVerificationResponse
@@ -3535,6 +5808,34 @@ class DomainVerificationResponse
             dns_record: $data['dns_record'],
             http_file: $data['http_file'],
             provider: $data['provider'],
+        );
+    }
+}
+
+/**
+ * The domain after a verification check, by DNS or by an emailed code
+ */
+class DomainVerificationResult
+{
+    public function __construct(
+        public readonly Domain $data,
+        public readonly bool $verified,
+        public readonly string $message,
+        public readonly ?bool $renewed = null,
+    ) {}
+
+    /**
+     * Create from API response array.
+     *
+     * @param array<string, mixed> $data
+     */
+    public static function fromArray(array $data): self
+    {
+        return new self(
+            data: Domain::fromArray($data['data']),
+            verified: $data['verified'],
+            message: $data['message'],
+            renewed: $data['renewed'] ?? null,
         );
     }
 }
@@ -3681,6 +5982,72 @@ class AddEmailRequest
 }
 
 /**
+ * An email-add session: a code was emailed to the address
+ */
+class AddEmailSessionResponse
+{
+    public function __construct(
+        public readonly string $session_id,
+        public readonly string $email,
+        public readonly string $channel,
+        public readonly string $status,
+        public readonly string $expires_at,
+        public readonly string $instructions,
+        public readonly bool $email_sent,
+        public readonly ?string $email_error = null,
+    ) {}
+
+    /**
+     * Create from API response array.
+     *
+     * @param array<string, mixed> $data
+     */
+    public static function fromArray(array $data): self
+    {
+        return new self(
+            session_id: $data['session_id'],
+            email: $data['email'],
+            channel: $data['channel'],
+            status: $data['status'],
+            expires_at: $data['expires_at'],
+            instructions: $data['instructions'],
+            email_sent: $data['email_sent'],
+            email_error: $data['email_error'] ?? null,
+        );
+    }
+}
+
+/**
+ * An email-add session's state
+ */
+class AddEmailStatusResponse
+{
+    public function __construct(
+        public readonly string $session_id,
+        public readonly string $email,
+        public readonly string $channel,
+        public readonly string $status,
+        public readonly ?string $verified_at = null,
+    ) {}
+
+    /**
+     * Create from API response array.
+     *
+     * @param array<string, mixed> $data
+     */
+    public static function fromArray(array $data): self
+    {
+        return new self(
+            session_id: $data['session_id'],
+            email: $data['email'],
+            channel: $data['channel'],
+            status: $data['status'],
+            verified_at: $data['verified_at'] ?? null,
+        );
+    }
+}
+
+/**
  * User email address
  */
 class UserEmail
@@ -3754,6 +6121,78 @@ class AddPhoneRequest
     {
         return new self(
             channel: $data['channel'],
+        );
+    }
+}
+
+/**
+ * A phone-add session's state
+ */
+class AddPhoneStatusResponse
+{
+    public function __construct(
+        public readonly string $session_id,
+        public readonly string $channel,
+        public readonly string $status,
+        public readonly ?string $phone_number = null,
+        public readonly ?string $verified_at = null,
+    ) {}
+
+    /**
+     * Create from API response array.
+     *
+     * @param array<string, mixed> $data
+     */
+    public static function fromArray(array $data): self
+    {
+        return new self(
+            session_id: $data['session_id'],
+            channel: $data['channel'],
+            status: $data['status'],
+            phone_number: $data['phone_number'] ?? null,
+            verified_at: $data['verified_at'] ?? null,
+        );
+    }
+}
+
+/**
+ * A phone-add session: the person proves the number by sending from it over `channel`
+ */
+class AddPhoneSessionResponse
+{
+    public function __construct(
+        public readonly string $session_id,
+        public readonly string $channel,
+        public readonly string $status,
+        public readonly string $expires_at,
+        public readonly string $instructions,
+        public readonly ?string $deep_link = null,
+        public readonly ?string $qr_code = null,
+        public readonly ?string $qr_text = null,
+        public readonly ?string $sms_code = null,
+        public readonly ?string $sms_message = null,
+        public readonly ?SmsNumbersByRegion $sms_dids = null,
+    ) {}
+
+    /**
+     * Create from API response array.
+     *
+     * @param array<string, mixed> $data
+     */
+    public static function fromArray(array $data): self
+    {
+        return new self(
+            session_id: $data['session_id'],
+            channel: $data['channel'],
+            status: $data['status'],
+            expires_at: $data['expires_at'],
+            instructions: $data['instructions'],
+            deep_link: $data['deep_link'] ?? null,
+            qr_code: $data['qr_code'] ?? null,
+            qr_text: $data['qr_text'] ?? null,
+            sms_code: $data['sms_code'] ?? null,
+            sms_message: $data['sms_message'] ?? null,
+            sms_dids: isset($data['sms_dids']) ? SmsNumbersByRegion::fromArray($data['sms_dids']) : null,
         );
     }
 }
@@ -4371,6 +6810,7 @@ class AuthorizationWebhookPayload
         public readonly ?string $proof_token = null,
         public readonly ?string $decided_at = null,
         public readonly ?string $expires_at = null,
+        public readonly ?string $profile_id = null,
     ) {}
 
     /**
@@ -4390,6 +6830,7 @@ class AuthorizationWebhookPayload
             proof_token: $data['proof_token'] ?? null,
             decided_at: $data['decided_at'] ?? null,
             expires_at: $data['expires_at'] ?? null,
+            profile_id: $data['profile_id'] ?? null,
         );
     }
 }
@@ -4532,6 +6973,7 @@ class CheckoutResponse
 {
     public function __construct(
         public readonly string $url,
+        public readonly ?string $checkout_url = null,
     ) {}
 
     /**
@@ -4542,7 +6984,8 @@ class CheckoutResponse
     public static function fromArray(array $data): self
     {
         return new self(
-            url: $data['url'],
+            url: $data['url'] ?? $data['checkout_url'],
+            checkout_url: $data['checkout_url'] ?? null,
         );
     }
 }
@@ -4576,6 +7019,7 @@ class PortalResponse
 {
     public function __construct(
         public readonly string $url,
+        public readonly ?string $portal_url = null,
     ) {}
 
     /**
@@ -4586,7 +7030,8 @@ class PortalResponse
     public static function fromArray(array $data): self
     {
         return new self(
-            url: $data['url'],
+            url: $data['url'] ?? $data['portal_url'],
+            portal_url: $data['portal_url'] ?? null,
         );
     }
 }
@@ -4598,7 +7043,7 @@ class PortalResponse
 /**
  * Branding settings
  *
- * @deprecated Removed from the API (account-level branding is retired: each project (sub-account) carries its own branding, set with the profiles resource); kept so code written for an earlier 1.x release keeps compiling, and dropped in the next major version.
+ * @deprecated Removed from the API (account-level branding is retired: each sub-account carries its own branding, set with the profiles resource); kept so code written for an earlier 1.x release keeps compiling, and dropped in the next major version.
  */
 class BrandingSettings
 {
@@ -4660,6 +7105,7 @@ class UpdateSettingsRequest
         public readonly ?BrandingSettings $branding = null,
         public readonly ?WebhookSettings $webhook = null,
         public readonly ?int $proof_expiry_days = null,
+        public readonly ?array $hitl = null,
     ) {}
 
     /**
@@ -4673,6 +7119,7 @@ class UpdateSettingsRequest
             branding: isset($data['branding']) ? BrandingSettings::fromArray($data['branding']) : null,
             webhook: isset($data['webhook']) ? WebhookSettings::fromArray($data['webhook']) : null,
             proof_expiry_days: $data['proof_expiry_days'] ?? null,
+            hitl: $data['hitl'] ?? null,
         );
     }
 }
@@ -4684,10 +7131,11 @@ class UpdateSettingsResponse
 {
     public function __construct(
         public readonly bool $success,
-        /** @deprecated Removed from the API (account-level branding is retired: each project (sub-account) carries its own branding, set with the profiles resource); kept so code written for an earlier 1.x release keeps compiling, and dropped in the next major version. */
+        /** @deprecated Removed from the API (account-level branding is retired: each sub-account carries its own branding, set with the profiles resource); kept so code written for an earlier 1.x release keeps compiling, and dropped in the next major version. */
         public readonly ?BrandingSettings $branding,
         public readonly WebhookSettingsResponse $webhook,
         public readonly ?int $proof_expiry_days,
+        public readonly ?array $hitl = null,
     ) {}
 
     /**
@@ -4702,6 +7150,7 @@ class UpdateSettingsResponse
             branding: isset($data['branding']) ? BrandingSettings::fromArray($data['branding']) : null,
             webhook: WebhookSettingsResponse::fromArray($data['webhook']),
             proof_expiry_days: $data['proof_expiry_days'] ?? null,
+            hitl: $data['hitl'] ?? null,
         );
     }
 }
@@ -4801,13 +7250,16 @@ class ResendVerificationResponse
 }
 
 /**
- * Request body for submitting a challenge code
+ * Request body for submitting the code we emailed (`submitCodeSchema`)
  */
 class SubmitChallengeRequest
 {
     public function __construct(
+        /** @deprecated Removed from the API (the route reads the code from `code`, which `verifications.submit` already sends); kept so code written for an earlier 1.x release keeps compiling, and dropped in the next major version. */
         public readonly string $challenge_code,
+        /** @deprecated Removed from the API (the route never read it; send only `code`); kept so code written for an earlier 1.x release keeps compiling, and dropped in the next major version. */
         public readonly ?string $source_identifier = null,
+        public readonly ?string $code = null,
     ) {}
 
     /**
@@ -4820,6 +7272,7 @@ class SubmitChallengeRequest
         return new self(
             challenge_code: $data['challenge_code'],
             source_identifier: $data['source_identifier'] ?? null,
+            code: $data['code'] ?? null,
         );
     }
 }
@@ -4842,6 +7295,36 @@ class SubmitVerificationCodeRequest
     {
         return new self(
             code: $data['code'],
+        );
+    }
+}
+
+/**
+ * The recipient's own proofs that could answer the request's unverified assets (Smart Reuse)
+ */
+class VerificationRequestExistingProofs
+{
+    public function __construct(
+        public readonly string $request_id,
+        public readonly bool $user_logged_in,
+        public readonly array $assets,
+        public readonly int $reusable_count,
+        public readonly int $total_required,
+    ) {}
+
+    /**
+     * Create from API response array.
+     *
+     * @param array<string, mixed> $data
+     */
+    public static function fromArray(array $data): self
+    {
+        return new self(
+            request_id: $data['request_id'],
+            user_logged_in: $data['user_logged_in'],
+            assets: $data['assets'],
+            reusable_count: $data['reusable_count'],
+            total_required: $data['total_required'],
         );
     }
 }
@@ -4931,6 +7414,42 @@ class VerificationRequestListResponse
         return new self(
             data: array_map(static fn (array $item) => VerificationRequestListItem::fromArray($item), $data['data']),
             pagination: PaginationResponse::fromArray($data['pagination']),
+        );
+    }
+}
+
+/**
+ * Result of submitting the code we emailed
+ */
+class SubmitChallengeResponse
+{
+    public function __construct(
+        public readonly string $id,
+        public readonly string $status,
+        public readonly int $attempts,
+        public readonly int $max_attempts,
+        public readonly ?string $verified_at = null,
+        public readonly ?array $proof = null,
+        public readonly ?string $message = null,
+        public readonly ?int $attempts_remaining = null,
+    ) {}
+
+    /**
+     * Create from API response array.
+     *
+     * @param array<string, mixed> $data
+     */
+    public static function fromArray(array $data): self
+    {
+        return new self(
+            id: $data['id'],
+            status: $data['status'],
+            attempts: $data['attempts'],
+            max_attempts: $data['max_attempts'],
+            verified_at: $data['verified_at'] ?? null,
+            proof: $data['proof'] ?? null,
+            message: $data['message'] ?? null,
+            attempts_remaining: $data['attempts_remaining'] ?? null,
         );
     }
 }
@@ -5102,6 +7621,58 @@ class Verification
 }
 
 /**
+ * Body of `verification.completed` — a direct verification (`POST /verifications`, or the winning channel of a multi-channel group) or a phone-first session that completed. Sent once per verification id.
+ */
+class VerificationCompletedWebhookPayload
+{
+    public function __construct(
+        public readonly string $event,
+        public readonly ?string $profile_id,
+        public readonly string $verification_id,
+        public readonly string $type,
+        public readonly string $channel,
+        public readonly ?string $identifier,
+        public readonly string $status,
+        public readonly string $environment,
+        public readonly ?string $external_user_id,
+        public readonly array $client_metadata,
+        public readonly ?string $verified_at,
+        public readonly string $proof_token,
+        public readonly ?string $proof_expires_at,
+        public readonly ?string $confidence = null,
+        public readonly ?string $session_id = null,
+        public readonly ?bool $test = null,
+    ) {}
+
+    /**
+     * Create from API response array.
+     *
+     * @param array<string, mixed> $data
+     */
+    public static function fromArray(array $data): self
+    {
+        return new self(
+            event: $data['event'],
+            profile_id: $data['profile_id'] ?? null,
+            verification_id: $data['verification_id'],
+            type: $data['type'],
+            channel: $data['channel'],
+            identifier: $data['identifier'] ?? null,
+            status: $data['status'],
+            environment: $data['environment'],
+            external_user_id: $data['external_user_id'] ?? null,
+            client_metadata: $data['client_metadata'],
+            verified_at: $data['verified_at'] ?? null,
+            proof_token: $data['proof_token'],
+            proof_expires_at: $data['proof_expires_at'] ?? null,
+            confidence: $data['confidence'] ?? null,
+            session_id: $data['session_id'] ?? null,
+            test: $data['test'] ?? null,
+        );
+    }
+}
+
+/**
  * Verification as listed
  */
 class VerificationListItem
@@ -5144,6 +7715,7 @@ class VerificationListQuery
         public readonly ?int $limit = null,
         public readonly ?string $status = null,
         public readonly ?string $type = null,
+        public readonly ?string $channel = null,
     ) {}
 
     /**
@@ -5158,6 +7730,7 @@ class VerificationListQuery
             limit: $data['limit'] ?? null,
             status: $data['status'] ?? null,
             type: $data['type'] ?? null,
+            channel: $data['channel'] ?? null,
         );
     }
 }
@@ -5244,6 +7817,42 @@ class VerificationRequest
 }
 
 /**
+ * One asset's verification status, polled by the recipient page. `request_status` is the request's, expiry re-derived: `cancelled` or `expired` ends the flow while the asset stays `pending`.
+ */
+class VerificationRequestAssetStatus
+{
+    public function __construct(
+        public readonly int $asset_index,
+        public readonly string $type,
+        public readonly ?string $identifier,
+        public readonly string $status,
+        public readonly string $request_status,
+        public readonly array $progress,
+        public readonly ?string $verified_at = null,
+        public readonly ?string $confidence = null,
+    ) {}
+
+    /**
+     * Create from API response array.
+     *
+     * @param array<string, mixed> $data
+     */
+    public static function fromArray(array $data): self
+    {
+        return new self(
+            asset_index: $data['asset_index'],
+            type: $data['type'],
+            identifier: $data['identifier'] ?? null,
+            status: $data['status'],
+            request_status: $data['request_status'],
+            progress: $data['progress'],
+            verified_at: $data['verified_at'] ?? null,
+            confidence: $data['confidence'] ?? null,
+        );
+    }
+}
+
+/**
  * Proof tokens for verified assets in a verification request
  */
 class VerificationRequestProofsResponse
@@ -5287,6 +7896,32 @@ class ClaimUsernameRequest
     {
         return new self(
             username: $data['username'],
+        );
+    }
+}
+
+/**
+ * The claimed username
+ */
+class ClaimUsernameResponse
+{
+    public function __construct(
+        public readonly string $username,
+        public readonly string $username_claimed_at,
+        public readonly string $profile_url,
+    ) {}
+
+    /**
+     * Create from API response array.
+     *
+     * @param array<string, mixed> $data
+     */
+    public static function fromArray(array $data): self
+    {
+        return new self(
+            username: $data['username'],
+            username_claimed_at: $data['username_claimed_at'],
+            profile_url: $data['profile_url'],
         );
     }
 }
@@ -5477,6 +8112,137 @@ class PublicProfileDelegation
 }
 
 /**
+ * The asset a profile's preview card, share tags and badge lead with: the first proof in the profile's order that is not hidden.
+ */
+class PublicProfileLeadingProof
+{
+    public function __construct(
+        public readonly string $type,
+        public readonly string $display_value,
+        public readonly ?string $label,
+    ) {}
+
+    /**
+     * Create from API response array.
+     *
+     * @param array<string, mixed> $data
+     */
+    public static function fromArray(array $data): self
+    {
+        return new self(
+            type: $data['type'],
+            display_value: $data['display_value'],
+            label: $data['label'] ?? null,
+        );
+    }
+}
+
+/**
+ * A visible link on a public profile.
+ */
+class PublicProfileLink
+{
+    public function __construct(
+        public readonly string $title,
+        public readonly string $url,
+        public readonly ?string $icon = null,
+    ) {}
+
+    /**
+     * Create from API response array.
+     *
+     * @param array<string, mixed> $data
+     */
+    public static function fromArray(array $data): self
+    {
+        return new self(
+            title: $data['title'],
+            url: $data['url'],
+            icon: $data['icon'] ?? null,
+        );
+    }
+}
+
+/**
+ * A proof shown on a public profile. The channel and the mask level are never published.
+ */
+class PublicProfileProof
+{
+    public function __construct(
+        public readonly string $type,
+        public readonly string $display_value,
+        public readonly ?string $label = null,
+        public readonly ?string $verified_at = null,
+    ) {}
+
+    /**
+     * Create from API response array.
+     *
+     * @param array<string, mixed> $data
+     */
+    public static function fromArray(array $data): self
+    {
+        return new self(
+            type: $data['type'],
+            display_value: $data['display_value'],
+            label: $data['label'] ?? null,
+            verified_at: $data['verified_at'] ?? null,
+        );
+    }
+}
+
+/**
+ * A public profile as anyone may read it (`GET /api/v1/profiles/p/{profileId}`, `GET /api/v1/profiles/u/{username}`).
+ */
+class PublicProfileView
+{
+    /**
+     * @param list<PublicProfileProof> $proofs
+     * @param list<PublicProfileLink> $links
+     * @param list<PublicProfileDelegation>|null $delegations
+     */
+    public function __construct(
+        public readonly string $profile_id,
+        public readonly string $verification_level,
+        public readonly bool $is_business,
+        public readonly array $proofs,
+        public readonly array $links,
+        public readonly ?string $username = null,
+        public readonly ?string $display_name = null,
+        public readonly ?string $bio = null,
+        public readonly ?string $avatar_url = null,
+        public readonly ?string $business_name = null,
+        public readonly ?PublicProfileLeadingProof $leading_proof = null,
+        public readonly ?ProfileTheme $theme = null,
+        public readonly ?array $delegations = null,
+    ) {}
+
+    /**
+     * Create from API response array.
+     *
+     * @param array<string, mixed> $data
+     */
+    public static function fromArray(array $data): self
+    {
+        return new self(
+            profile_id: $data['profile_id'],
+            verification_level: $data['verification_level'],
+            is_business: $data['is_business'],
+            proofs: array_map(static fn (array $item) => PublicProfileProof::fromArray($item), $data['proofs']),
+            links: array_map(static fn (array $item) => PublicProfileLink::fromArray($item), $data['links']),
+            username: $data['username'] ?? null,
+            display_name: $data['display_name'] ?? null,
+            bio: $data['bio'] ?? null,
+            avatar_url: $data['avatar_url'] ?? null,
+            business_name: $data['business_name'] ?? null,
+            leading_proof: isset($data['leading_proof']) ? PublicProfileLeadingProof::fromArray($data['leading_proof']) : null,
+            theme: isset($data['theme']) ? ProfileTheme::fromArray($data['theme']) : null,
+            delegations: isset($data['delegations']) ? array_map(static fn (array $item) => PublicProfileDelegation::fromArray($item), $data['delegations']) : null,
+        );
+    }
+}
+
+/**
  * Request body for updating which proofs are displayed on a profile
  */
 class UpdateProfileProofsRequest
@@ -5486,6 +8252,7 @@ class UpdateProfileProofsRequest
      */
     public function __construct(
         public readonly array $proofs,
+        public readonly ?string $proof_order = null,
     ) {}
 
     /**
@@ -5497,6 +8264,7 @@ class UpdateProfileProofsRequest
     {
         return new self(
             proofs: array_map(static fn (array $item) => ProfileProofEntry::fromArray($item), $data['proofs']),
+            proof_order: $data['proof_order'] ?? null,
         );
     }
 }
@@ -5572,7 +8340,7 @@ class UsernameParam
 }
 
 /**
- * Public profile
+ * Deprecated. NO endpoint returns this shape: the public reads return `PublicProfileView` and the owner's operations return `ProfileOwnerResponse`. Kept for released SDK types; removed in the next major.
  */
 class PublicProfile
 {
@@ -5599,6 +8367,9 @@ class PublicProfile
         public readonly ?array $delegations = null,
         public readonly ?string $email_theme = null,
         public readonly ?string $support_email = null,
+        public readonly ?PublicProfileLeadingProof $leading_proof = null,
+        public readonly ?string $proof_order = null,
+        public readonly ?string $verification_level = null,
     ) {}
 
     /**
@@ -5627,6 +8398,9 @@ class PublicProfile
             delegations: isset($data['delegations']) ? array_map(static fn (array $item) => PublicProfileDelegation::fromArray($item), $data['delegations']) : null,
             email_theme: $data['email_theme'] ?? null,
             support_email: $data['support_email'] ?? null,
+            leading_proof: isset($data['leading_proof']) ? PublicProfileLeadingProof::fromArray($data['leading_proof']) : null,
+            proof_order: $data['proof_order'] ?? null,
+            verification_level: $data['verification_level'] ?? null,
         );
     }
 }
@@ -6343,6 +9117,8 @@ class Template
         public readonly ?bool $is_active = null,
         public readonly ?int $version = null,
         public readonly ?string $updated_at = null,
+        public readonly ?string $last_fallback_at = null,
+        public readonly ?array $last_fallback_variables = null,
     ) {}
 
     /**
@@ -6364,6 +9140,8 @@ class Template
             is_active: $data['is_active'] ?? null,
             version: $data['version'] ?? null,
             updated_at: $data['updated_at'] ?? null,
+            last_fallback_at: $data['last_fallback_at'] ?? null,
+            last_fallback_variables: $data['last_fallback_variables'] ?? null,
         );
     }
 }
@@ -6392,6 +9170,28 @@ class TemplateContent
             subject: $data['subject'] ?? null,
             button_text: $data['button_text'] ?? null,
             button_url_template: $data['button_url_template'] ?? null,
+        );
+    }
+}
+
+/**
+ * The platform default templates
+ */
+class TemplateDefaultsResponse
+{
+    public function __construct(
+        public readonly array $defaults,
+    ) {}
+
+    /**
+     * Create from API response array.
+     *
+     * @param array<string, mixed> $data
+     */
+    public static function fromArray(array $data): self
+    {
+        return new self(
+            defaults: $data['defaults'],
         );
     }
 }
@@ -6490,6 +9290,58 @@ class TemplateScopeQuery
     {
         return new self(
             profile_id: $data['profile_id'] ?? null,
+        );
+    }
+}
+
+/**
+ * Why a saved template would never be sent as written. The save still succeeds.
+ */
+class TemplateSendWarning
+{
+    public function __construct(
+        public readonly string $code,
+        public readonly string $message,
+        public readonly ?array $variables = null,
+    ) {}
+
+    /**
+     * Create from API response array.
+     *
+     * @param array<string, mixed> $data
+     */
+    public static function fromArray(array $data): self
+    {
+        return new self(
+            code: $data['code'],
+            message: $data['message'],
+            variables: $data['variables'] ?? null,
+        );
+    }
+}
+
+/**
+ * A channel and message type some message is sent for, so a template saved for it is used.
+ */
+class TemplateSendablePair
+{
+    public function __construct(
+        public readonly string $channel,
+        public readonly string $message_type,
+        public readonly array $variables,
+    ) {}
+
+    /**
+     * Create from API response array.
+     *
+     * @param array<string, mixed> $data
+     */
+    public static function fromArray(array $data): self
+    {
+        return new self(
+            channel: $data['channel'],
+            message_type: $data['message_type'],
+            variables: $data['variables'],
         );
     }
 }
@@ -6631,7 +9483,7 @@ class CreateAPIKeyRequest
 }
 
 // ============================================================================
-// Projects
+// Sub-accounts
 // ============================================================================
 
 class ProjectDeletedResponse
@@ -6770,6 +9622,117 @@ class WebhookDeliveryStats
 }
 
 /**
+ * A webhook endpoint. Deliveries carry `X-Proof-Signature`, an HMAC-SHA256 with this endpoint's secret over `<X-Proof-Timestamp>.<body>`; the secret itself is returned only on create and rotate.
+ */
+class WebhookEndpoint
+{
+    public function __construct(
+        public readonly string $id,
+        public readonly string $url,
+        public readonly array $events,
+        public readonly string $scope,
+        public readonly array $profile_ids,
+        public readonly string $status,
+        public readonly ?string $description,
+        public readonly bool $legacy,
+        public readonly bool $secret_set,
+        public readonly string $created_at,
+        public readonly string $updated_at,
+    ) {}
+
+    /**
+     * Create from API response array.
+     *
+     * @param array<string, mixed> $data
+     */
+    public static function fromArray(array $data): self
+    {
+        return new self(
+            id: $data['id'],
+            url: $data['url'],
+            events: $data['events'],
+            scope: $data['scope'],
+            profile_ids: $data['profile_ids'],
+            status: $data['status'],
+            description: $data['description'] ?? null,
+            legacy: $data['legacy'],
+            secret_set: $data['secret_set'],
+            created_at: $data['created_at'],
+            updated_at: $data['updated_at'],
+        );
+    }
+}
+
+/**
+ * The endpoints the caller may see. A sub-account key sees only those scoped to exactly its own sub-account.
+ */
+class WebhookEndpointList
+{
+    /**
+     * @param list<WebhookEndpoint> $data
+     */
+    public function __construct(
+        public readonly array $data,
+    ) {}
+
+    /**
+     * Create from API response array.
+     *
+     * @param array<string, mixed> $data
+     */
+    public static function fromArray(array $data): self
+    {
+        return new self(
+            data: array_map(static fn (array $item) => WebhookEndpoint::fromArray($item), $data['data']),
+        );
+    }
+}
+
+/**
+ * A webhook endpoint with its signing secret, returned once (create, rotate).
+ */
+class WebhookEndpointWithSecret
+{
+    public function __construct(
+        public readonly string $id,
+        public readonly string $url,
+        public readonly array $events,
+        public readonly string $scope,
+        public readonly array $profile_ids,
+        public readonly string $status,
+        public readonly ?string $description,
+        public readonly bool $legacy,
+        public readonly bool $secret_set,
+        public readonly string $created_at,
+        public readonly string $updated_at,
+        public readonly string $secret,
+    ) {}
+
+    /**
+     * Create from API response array.
+     *
+     * @param array<string, mixed> $data
+     */
+    public static function fromArray(array $data): self
+    {
+        return new self(
+            id: $data['id'],
+            url: $data['url'],
+            events: $data['events'],
+            scope: $data['scope'],
+            profile_ids: $data['profile_ids'],
+            status: $data['status'],
+            description: $data['description'] ?? null,
+            legacy: $data['legacy'],
+            secret_set: $data['secret_set'],
+            created_at: $data['created_at'],
+            updated_at: $data['updated_at'],
+            secret: $data['secret'],
+        );
+    }
+}
+
+/**
  * Webhook delivery record
  */
 class WebhookDelivery
@@ -6791,6 +9754,9 @@ class WebhookDelivery
         public readonly ?array $payload,
         public readonly ?string $response_body,
         public readonly string $updated_at,
+        public readonly ?string $endpoint_id = null,
+        public readonly ?string $profile_id = null,
+        public readonly ?string $token_omitted_reason = null,
     ) {}
 
     /**
@@ -6817,6 +9783,9 @@ class WebhookDelivery
             payload: $data['payload'] ?? null,
             response_body: $data['response_body'] ?? null,
             updated_at: $data['updated_at'],
+            endpoint_id: $data['endpoint_id'] ?? null,
+            profile_id: $data['profile_id'] ?? null,
+            token_omitted_reason: $data['token_omitted_reason'] ?? null,
         );
     }
 }
@@ -6840,6 +9809,8 @@ class WebhookDeliveryListItem
         public readonly ?int $response_status,
         public readonly ?string $error_message,
         public readonly string $created_at,
+        public readonly ?string $endpoint_id = null,
+        public readonly ?string $profile_id = null,
     ) {}
 
     /**
@@ -6863,6 +9834,8 @@ class WebhookDeliveryListItem
             response_status: $data['response_status'] ?? null,
             error_message: $data['error_message'] ?? null,
             created_at: $data['created_at'],
+            endpoint_id: $data['endpoint_id'] ?? null,
+            profile_id: $data['profile_id'] ?? null,
         );
     }
 }
@@ -6875,6 +9848,8 @@ class WebhookDeliveryListQuery
         public readonly ?string $status = null,
         public readonly ?string $event_type = null,
         public readonly mixed $verification_request_id = null,
+        public readonly ?string $endpoint_id = null,
+        public readonly ?string $profile_id = null,
     ) {}
 
     /**
@@ -6890,6 +9865,8 @@ class WebhookDeliveryListQuery
             status: $data['status'] ?? null,
             event_type: $data['event_type'] ?? null,
             verification_request_id: $data['verification_request_id'] ?? null,
+            endpoint_id: $data['endpoint_id'] ?? null,
+            profile_id: $data['profile_id'] ?? null,
         );
     }
 }
@@ -6970,6 +9947,7 @@ class WebhookPayload
         public readonly ?array $client_metadata = null,
         public readonly ?string $completed_at = null,
         public readonly ?bool $test = null,
+        public readonly ?string $profile_id = null,
     ) {}
 
     /**
@@ -6991,6 +9969,7 @@ class WebhookPayload
             client_metadata: $data['client_metadata'] ?? null,
             completed_at: $data['completed_at'] ?? null,
             test: $data['test'] ?? null,
+            profile_id: $data['profile_id'] ?? null,
         );
     }
 }
@@ -7022,7 +10001,7 @@ class WebhookSettings
 }
 
 /**
- * Outbound webhook configuration as stored.
+ * Outbound webhook configuration — DEPRECATED (#421). An account switched over to webhook endpoints sees its account-wide (`legacy`) endpoint here: `url` is null while that endpoint is disabled, a `url` write updates or creates it, `url: null` disables it (its secret is kept), and `rotate_secret` rotates its secret. An account not yet switched over sees its settings fields, as before. Omitted for an API key bound to one sub-account.
  */
 class WebhookSettingsResponse
 {
@@ -7031,6 +10010,7 @@ class WebhookSettingsResponse
         public readonly array $events,
         public readonly bool $secret_set,
         public readonly ?string $secret = null,
+        public readonly ?string $deprecated = null,
     ) {}
 
     /**
@@ -7045,6 +10025,7 @@ class WebhookSettingsResponse
             events: $data['events'],
             secret_set: $data['secret_set'],
             secret: $data['secret'] ?? null,
+            deprecated: $data['deprecated'] ?? null,
         );
     }
 }
@@ -7127,6 +10108,82 @@ class TryItResponse
             verification_url: $data['verification_url'],
             request_id: $data['request_id'],
             expires_at: $data['expires_at'],
+        );
+    }
+}
+
+/**
+ * A started verification for one asset: what to show the person, by asset type and channel. The six fields up to `expires_at` are always sent; each other field only for the type and channel its description names. sms: `sms_dids` lists all three regions here, a region with no number carrying an empty `did`.
+ */
+class StartAssetVerificationResponse
+{
+    public function __construct(
+        public readonly string $verification_id,
+        public readonly int $asset_index,
+        public readonly string $type,
+        public readonly string $channel,
+        public readonly string $status,
+        public readonly string $expires_at,
+        public readonly ?string $instructions = null,
+        public readonly ?string $deep_link = null,
+        public readonly ?string $qr_code = null,
+        public readonly ?string $qr_text = null,
+        public readonly ?string $message = null,
+        public readonly ?string $phone_number = null,
+        public readonly ?string $sms_code = null,
+        public readonly ?string $sms_message = null,
+        public readonly ?SessionSmsNumbers $sms_dids = null,
+        public readonly ?string $suggested_region = null,
+        public readonly ?bool $email_sent = null,
+        public readonly ?string $email_error = null,
+        public readonly ?string $record_type = null,
+        public readonly ?string $record_name = null,
+        public readonly ?string $record_value = null,
+        public readonly ?string $file_path = null,
+        public readonly ?string $file_content = null,
+        public readonly ?string $file_url = null,
+        public readonly ?string $email_sent_to = null,
+        public readonly ?int $otp_code_length = null,
+        public readonly ?array $verified_data = null,
+        public readonly ?string $proof_token = null,
+    ) {}
+
+    /**
+     * Create from API response array.
+     *
+     * @param array<string, mixed> $data
+     */
+    public static function fromArray(array $data): self
+    {
+        return new self(
+            verification_id: $data['verification_id'],
+            asset_index: $data['asset_index'],
+            type: $data['type'],
+            channel: $data['channel'],
+            status: $data['status'],
+            expires_at: $data['expires_at'],
+            instructions: $data['instructions'] ?? null,
+            deep_link: $data['deep_link'] ?? null,
+            qr_code: $data['qr_code'] ?? null,
+            qr_text: $data['qr_text'] ?? null,
+            message: $data['message'] ?? null,
+            phone_number: $data['phone_number'] ?? null,
+            sms_code: $data['sms_code'] ?? null,
+            sms_message: $data['sms_message'] ?? null,
+            sms_dids: isset($data['sms_dids']) ? SessionSmsNumbers::fromArray($data['sms_dids']) : null,
+            suggested_region: $data['suggested_region'] ?? null,
+            email_sent: $data['email_sent'] ?? null,
+            email_error: $data['email_error'] ?? null,
+            record_type: $data['record_type'] ?? null,
+            record_name: $data['record_name'] ?? null,
+            record_value: $data['record_value'] ?? null,
+            file_path: $data['file_path'] ?? null,
+            file_content: $data['file_content'] ?? null,
+            file_url: $data['file_url'] ?? null,
+            email_sent_to: $data['email_sent_to'] ?? null,
+            otp_code_length: $data['otp_code_length'] ?? null,
+            verified_data: $data['verified_data'] ?? null,
+            proof_token: $data['proof_token'] ?? null,
         );
     }
 }

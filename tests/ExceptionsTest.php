@@ -63,6 +63,17 @@ class ExceptionsTest extends TestCase
         $this->assertSame(418, $error->statusCode);
     }
 
+    public function testFromResponseMaps410EndpointRetiredToPlainProofExceptionAsIn120(): void
+    {
+        $error = ProofException::fromResponse(410, ['code' => 'endpoint_retired', 'message' => 'Gone', 'request_id' => 'req_1']);
+        $this->assertSame(ProofException::class, $error::class);
+        $this->assertSame('endpoint_retired', $error->errorCode);
+        $this->assertSame(410, $error->statusCode);
+        $this->assertSame(410, $error->getCode());
+        $this->assertSame('Gone', $error->getMessage());
+        $this->assertSame('req_1', $error->requestId);
+    }
+
     public function testExceptionHierarchy(): void
     {
         $error = ProofException::fromResponse(400);

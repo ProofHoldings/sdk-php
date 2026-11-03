@@ -61,7 +61,7 @@ final class LiveSmsSessionsTemplatesIntegrationTest extends IntegrationTestCase
         $this->assertIsArray($listed['custom_templates']);
         $this->assertContains('sms', $listed['available_channels']);
 
-        $template = $proof->templates->get('sms', 'verification_request');
+        $template = $proof->templates->get('telegram', 'verification_request');
         $this->assertSame($listed['profile_id'], $template['profile_id']);
         $this->assertContains($template['scope'], ['project', 'default']);
         $this->assertIsString($template['template']['body']);
@@ -73,7 +73,7 @@ final class LiveSmsSessionsTemplatesIntegrationTest extends IntegrationTestCase
         $projectId = $proof->templates->list()['profile_id'];
 
         $this->assertSame($projectId, $proof->templates->list($projectId)['profile_id']);
-        $this->assertSame($projectId, $proof->templates->get('sms', 'verification_request', $projectId)['profile_id']);
+        $this->assertSame($projectId, $proof->templates->get('telegram', 'verification_request', $projectId)['profile_id']);
 
         try {
             $proof->templates->list(self::UNOWNED_PROFILE_ID);

@@ -15,7 +15,7 @@ use ProofHoldings\Streaming;
  */
 class AuthSessions
 {
-    private const array TERMINAL_STATES = ['verified', 'failed', 'expired'];
+    private const array TERMINAL_STATES = ['verified', 'failed', 'expired', 'completed_elsewhere'];
 
     public function __construct(private readonly HttpClient $http) {}
 
@@ -30,7 +30,7 @@ class AuthSessions
         return Streaming::streamEndpoint(
             $this->http,
             '/api/v1/auth/sessions/' . rawurlencode($id) . '/events',
-            fn () => $this->http->get('/api/v1/sessions/' . rawurlencode($id)),
+            fn () => $this->http->get('/api/v1/auth/sessions/' . rawurlencode($id)),
             self::TERMINAL_STATES,
             "Auth session {$id}",
             $shouldCancel,

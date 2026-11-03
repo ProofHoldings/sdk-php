@@ -449,6 +449,32 @@ class ResourcesTest extends TestCase
         $this->assertSame($fixture['response'], $result->response);
     }
 
+    public function testConfirmationsRetrieveHydratesResends(): void
+    {
+        $fixture = $this->confirmationFixture();
+        $http = $this->mockHttp();
+        $http->expects($this->once())->method('get')->willReturn($fixture);
+
+        $result = (new Confirmations($http))->retrieve($fixture['id']);
+
+        $this->assertIsArray($result->resends);
+        $this->assertCount(count($fixture['resends']), $result->resends);
+        $this->assertSame($fixture['resends'][0]['at'], $result->resends[0]->at);
+        $this->assertSame('telegram', $result->resends[0]->channels[0]['type']);
+    }
+
+    public function testConfirmationsRetrieveWithoutResendsFromAnOlderApi(): void
+    {
+        $fixture = $this->confirmationFixture();
+        unset($fixture['resends']);
+        $http = $this->mockHttp();
+        $http->expects($this->once())->method('get')->willReturn($fixture);
+
+        $result = (new Confirmations($http))->retrieve($fixture['id']);
+
+        $this->assertNull($result->resends);
+    }
+
     public function testConfirmationsCreateDeserializesTheWireShape(): void
     {
         $fixture = $this->confirmationFixture();
@@ -581,6 +607,34 @@ class ResourcesTest extends TestCase
             'button_text' => 'Verify',
         ]);
         $this->assertTrue($result['success']);
+    }
+
+    // An API that predates `sendable` and `warnings` omits them; each response comes back exactly as sent.
+    public function testTemplatesListUpsertAndPreviewReturnAResponseWithoutSendableOrWarnings(): void
+    {
+        $http = $this->mockHttp();
+        $http->expects($this->once())
+            ->method('get')
+            ->willReturn(['custom_templates' => [], 'available_channels' => []]);
+        $http->expects($this->once())
+            ->method('put')
+            ->willReturn(['success' => true, 'template' => []]);
+        $http->expects($this->once())
+            ->method('post')
+            ->willReturn(['preview' => ['body' => 'x'], 'validation_errors' => [], 'is_valid' => true]);
+
+        $t = new Templates($http);
+        $listed = $t->list();
+        $saved = $t->upsert('telegram', 'verification_request', ['body' => 'Hi {{business_name}}']);
+        $previewed = $t->preview([
+            'channel' => 'telegram',
+            'message_type' => 'verification_request',
+            'body' => 'Hi',
+        ]);
+
+        $this->assertSame(['custom_templates' => [], 'available_channels' => []], $listed);
+        $this->assertSame(['success' => true, 'template' => []], $saved);
+        $this->assertSame(['preview' => ['body' => 'x'], 'validation_errors' => [], 'is_valid' => true], $previewed);
     }
 
     public function testTemplatesDeleteResetsToDefault(): void

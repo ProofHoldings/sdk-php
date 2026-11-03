@@ -10,6 +10,7 @@ use ProofHoldings\Resources\AuthSessions;
 use ProofHoldings\Resources\Circles;
 use ProofHoldings\Resources\Confirmations;
 use ProofHoldings\Resources\Delegations;
+use ProofHoldings\Resources\Billing;
 use ProofHoldings\Resources\Hitl;
 use ProofHoldings\Resources\HitlChatId;
 use ProofHoldings\Resources\HitlKeys;
@@ -23,6 +24,7 @@ use ProofHoldings\Resources\Templates;
 use ProofHoldings\Resources\VerificationRequests;
 use ProofHoldings\Resources\Verifications;
 use ProofHoldings\Resources\WebhookDeliveries;
+use ProofHoldings\Resources\WebhookEndpoints;
 
 class Proof
 {
@@ -48,6 +50,8 @@ class Proof
     public readonly ProofMe $proofMe;
     public readonly Circles $circles;
     public readonly Delegations $delegations;
+    public readonly Billing $billing;
+    public readonly WebhookEndpoints $webhookEndpoints;
 
     /**
      * With a key it is used as given. Without one — `new Proof()` — it is resolved the way
@@ -92,5 +96,7 @@ class Proof
         $this->proofMe = new ProofMe($http);
         $this->circles = new Circles($http);
         $this->delegations = new Delegations($http);
+        $this->billing = new Billing($http);
+        $this->webhookEndpoints = new WebhookEndpoints($http);
     }
 }

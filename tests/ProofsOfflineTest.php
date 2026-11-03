@@ -151,7 +151,8 @@ class ProofsOfflineTest extends TestCase
         ?array $slot = ['idx' => 1],
         ?\OpenSSLAsymmetricKey $key = null,
         string $issuer = 'proof.holdings',
-        ?int $iat = null
+        ?int $iat = null,
+        array $extra = []
     ): string {
         $now = time();
         $claims = [
@@ -164,7 +165,7 @@ class ProofsOfflineTest extends TestCase
             'identifier_hash' => 'abc123',
             'verified_at' => '2026-09-21T10:00:00.000Z',
             'user_id' => 'usr_1',
-        ];
+        ] + $extra;
         if ($slot !== null) {
             $claims['status'] = ['status_list' => [
                 'idx' => $slot['idx'],
@@ -809,5 +810,67 @@ class ProofsOfflineTest extends TestCase
             sprintf('status list uri origin %s is not the configured issuer origin %s', $case['uri_origin'], $configured),
             $result['error']
         );
+    }
+
+    /** @return array<string, array{array{name: string, claims: array<string, string>, payload: array<string, string>}}> */
+    public static function decisionClaimsCases(): array
+    {
+        $fixture = json_decode(
+            (string) file_get_contents(__DIR__ . '/../../shared/fixtures/decision_claims.json'),
+            true
+        );
+        $cases = [];
+        foreach ($fixture['cases'] as $case) {
+            $cases[$case['name']] = [$case];
+        }
+
+        return $cases;
+    }
+
+    /** @param array{name: string, claims: array<string, string>, payload: array<string, string>} $case */
+    #[\PHPUnit\Framework\Attributes\DataProvider('decisionClaimsCases')]
+    public function testTheSharedDecisionClaimsFixture(array $case): void
+    {
+        $result = $this->proofs()->verifyOffline($this->mintProof(null, null, 'proof.holdings', null, $case['claims']));
+
+        $this->assertTrue($result['valid']);
+        foreach (['decision', 'decided_by', 'authorization_id', 'signer_kid'] as $name) {
+            $this->assertArrayHasKey($name, $result['payload']);
+            $this->assertSame($case['payload'][$name] ?? null, $result['payload'][$name], $name);
+        }
+    }
+
+    /** @return array<string, array{array{name: string, with_exp: bool, claims: array<string, mixed>, valid: bool}}> */
+    public static function proofClaimsCases(): array
+    {
+        $fixture = json_decode(
+            (string) file_get_contents(__DIR__ . '/../../shared/fixtures/proof_claims.json'),
+            true
+        );
+        $cases = [];
+        foreach ($fixture['cases'] as $case) {
+            $cases[$case['name']] = [$case];
+        }
+
+        return $cases;
+    }
+
+    /** @param array{name: string, with_exp: bool, claims: array<string, mixed>, valid: bool} $case */
+    #[\PHPUnit\Framework\Attributes\DataProvider('proofClaimsCases')]
+    public function testTheSharedProofClaimsFixture(array $case): void
+    {
+        $now = time();
+        $claims = ['iss' => 'proof.holdings', 'iat' => $now - 60] + $case['claims'];
+        if ($case['with_exp']) {
+            $claims['exp'] = $now + 3600;
+        }
+
+        $result = $this->proofs()->verifyOffline(JWT::encode($claims, $this->privateKey, 'ES256', $this->publishedKid));
+
+        $this->assertSame($case['valid'], $result['valid']);
+        if (!$case['valid']) {
+            $this->assertSame('invalid', $result['reason']);
+            $this->assertArrayNotHasKey('payload', $result);
+        }
     }
 }

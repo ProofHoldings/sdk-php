@@ -16,6 +16,10 @@ class Polling
     public const float DEFAULT_JITTER = 0.5;
     private const int MICROSECONDS_PER_SECOND = 1_000_000;
 
+    /**
+     * As 1.2.0 released it. `Verifications` stops at `cancelled` too, from its own list; the next major
+     * adds `cancelled` here (sdks/shared/NEXT_MAJOR.md).
+     */
     public const array VERIFICATION_TERMINAL_STATES = ['verified', 'failed', 'expired', 'revoked'];
     public const array SESSION_TERMINAL_STATES = ['verified', 'failed', 'expired'];
     public const array REQUEST_TERMINAL_STATES = ['completed', 'expired', 'cancelled'];

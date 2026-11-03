@@ -87,7 +87,7 @@ $result = $proof->verificationRequests->waitForCompletion($req['id']);
 $result = $proof->proofs->validate('eyJhbGciOi...');
 
 // Revoke
-$response = $proof->proofs->revoke('ver_abc123', 'User requested');
+$response = $proof->proofs->revoke('ver_abc123', 'user_request');
 
 // Get revocation list
 $revoked = $proof->proofs->listRevoked();
@@ -155,6 +155,26 @@ $result = $proof->sessions->waitForCompletion($session['id']);
 ```php
 $deliveries = $proof->webhookDeliveries->list(['status' => 'failed']);
 $result = $proof->webhookDeliveries->retry('del_abc123');
+```
+
+### Webhook Endpoints
+
+```php
+// The signing secret is returned ONCE — here and by rotateSecret(). Store it now.
+$endpoint = $proof->webhookEndpoints->create([
+    'url' => 'https://example.com/webhooks/proof',
+    'scope' => 'all',
+    'events' => ['verification.completed'],
+]);
+$secret = $endpoint['secret'];
+
+$endpoints = $proof->webhookEndpoints->list();          // ['data' => [...]], no secrets
+$proof->webhookEndpoints->update($endpoint['id'], ['status' => 'disabled']);
+$rotated = $proof->webhookEndpoints->rotateSecret($endpoint['id']); // $rotated['secret']
+$proof->webhookEndpoints->delete($endpoint['id']);
+
+// A sub-account's callback signing secret (returned once, by the rotation)
+$callback = $proof->profiles->rotateCallbackSecret('prof_abc123'); // ['profile_id' => ..., 'secret' => ...]
 ```
 
 ## Error Handling

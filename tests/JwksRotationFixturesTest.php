@@ -421,7 +421,8 @@ final class JwksRotationFixturesTest extends TestCase
         $proof = \Firebase\JWT\JWT::encode(
             [
                 'iss' => 'proof.holdings', 'sub' => 'ph_ctl_x', 'proof_id' => 'ph_ctl_x', 'iat' => $t0 - 10 * self::MIN, 'exp' => $t0 + 3600,
-                'type' => 'domain', 'channel' => 'dns', 'verified_at' => '2026-12-31T23:59:00.000Z',
+                'type' => 'domain', 'channel' => 'dns', 'identifier_hash' => 'abc123', 'user_id' => 'usr_1',
+                'verified_at' => '2026-12-31T23:59:00.000Z',
                 'status' => ['status_list' => ['idx' => 0, 'uri' => $this->context('status_list_uri')]],
             ],
             $keys['prf'],

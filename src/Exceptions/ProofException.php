@@ -27,6 +27,13 @@ class ProofException extends RuntimeException
 
         return match ($statusCode) {
             400 => new ValidationException($message, $code, $details, $requestId),
+            402 => new BalanceEmptyException(
+                $message, $code, $details, $requestId,
+                isset($error['top_up_url']) ? (string) $error['top_up_url'] : null,
+                isset($error['used']) ? (int) $error['used'] : null,
+                isset($error['included']) ? (int) $error['included'] : null,
+                isset($error['balance']) ? (int) $error['balance'] : null,
+            ),
             401 => new AuthenticationException($message, $code, $details, $requestId),
             403 => new ForbiddenException($message, $code, $details, $requestId),
             404 => new NotFoundException($message, $code, $details, $requestId),
@@ -36,9 +43,11 @@ class ProofException extends RuntimeException
                 isset($error['retryAfter']) ? (int) $error['retryAfter'] : null,
                 isset($error['remaining_attempts']) ? (int) $error['remaining_attempts'] : null,
             ),
-            default => $statusCode >= 500
-                ? new ServerException($message, $code, $statusCode, $details, $requestId)
-                : new static($message, $code, $statusCode, $details, $requestId),
+            default => match (true) {
+                $code === BillingUnavailableException::CODE => new BillingUnavailableException($message, $statusCode, $details, $requestId),
+                $statusCode >= 500 => new ServerException($message, $code, $statusCode, $details, $requestId),
+                default => new static($message, $code, $statusCode, $details, $requestId),
+            },
         };
     }
 }

@@ -7,6 +7,7 @@ namespace ProofHoldings\Tests;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use ProofHoldings\Polling;
+use ProofHoldings\Resources\Verifications;
 use ProofHoldings\Exceptions\PollingCancelledException;
 use ProofHoldings\Exceptions\PollingTimeoutException;
 
@@ -56,13 +57,24 @@ class PollingTest extends TestCase
         );
     }
 
+    /** The public constant is frozen as 1.2.0 released it; the next major adds `cancelled` (sdks/shared/NEXT_MAJOR.md). */
+    public function testVerificationTerminalStatesConstantStaysAsReleased(): void
+    {
+        $this->assertSame(['verified', 'failed', 'expired', 'revoked'], Polling::VERIFICATION_TERMINAL_STATES);
+    }
+
+    /** What `Verifications::waitForCompletion()` and `stream()` stop at: the released states and `cancelled`. */
+    private static function verificationsTerminalStates(): array
+    {
+        return (new \ReflectionClassConstant(Verifications::class, 'TERMINAL_STATES'))->getValue();
+    }
+
     #[DataProvider('verificationTerminalStatesProvider')]
     public function testVerificationTerminalStates(string $status): void
     {
-        $terminalStates = ['verified', 'failed', 'expired', 'revoked'];
         $result = Polling::waitUntilComplete(
             fn () => ['status' => $status],
-            $terminalStates,
+            self::verificationsTerminalStates(),
             'Test',
             0.01,
             0.1,
@@ -77,6 +89,8 @@ class PollingTest extends TestCase
             'failed' => ['failed'],
             'expired' => ['expired'],
             'revoked' => ['revoked'],
+            // The losing sibling of a first-win multi-channel group.
+            'cancelled' => ['cancelled'],
         ];
     }
 

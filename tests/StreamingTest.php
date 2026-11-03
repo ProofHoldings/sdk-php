@@ -9,6 +9,7 @@ use GuzzleHttp\Psr7\Utils;
 use PHPUnit\Framework\TestCase;
 use ProofHoldings\Exceptions\NetworkException;
 use ProofHoldings\HttpClient;
+use ProofHoldings\Resources\AuthSessions;
 use ProofHoldings\Resources\VerificationRequests;
 use ProofHoldings\Streaming;
 
@@ -155,6 +156,23 @@ class StreamingTest extends TestCase
         $this->assertSame('verified', end($events)['data']['status']);
     }
 
+    /** A cancelled verification (a losing multi-channel sibling) ends the verification stream's fallback. */
+    public function testVerificationPollingFallbackEndsOnCancelled(): void
+    {
+        $terminalStates = (new \ReflectionClassConstant(\ProofHoldings\Resources\Verifications::class, 'TERMINAL_STATES'))->getValue();
+        $this->assertContains('cancelled', $terminalStates);
+        $gen = Streaming::streamEndpoint(
+            $this->http, '/x', fn () => ['id' => 'ver_1', 'status' => 'cancelled'],
+            $terminalStates, 'Test',
+            injectResponse: new Response(503),
+        );
+        $events = iterator_to_array($gen, false);
+
+        $this->assertCount(1, $events);
+        $this->assertSame('terminal', $events[0]['event']);
+        $this->assertSame('cancelled', $events[0]['data']['status']);
+    }
+
     public function testPollingFallbackEndsOnTheTerminalPredicate(): void
     {
         $calls = 0;
@@ -216,6 +234,43 @@ class StreamingTest extends TestCase
         $this->assertSame('terminal', $events[0]['event']);
         $this->assertSame(
             ['/api/v1/verify/request/vr_1/assets/0/events', '/api/v1/verify/request/vr_1/assets/0/status'],
+            $http->paths,
+        );
+    }
+
+    public function testAuthSessionStreamEndsWhenCompletedElsewhere(): void
+    {
+        $http = new class () extends HttpClient {
+            /** @var list<string> */
+            public array $paths = [];
+
+            public function __construct()
+            {
+                parent::__construct('pk_test_xxx', 'https://api.example.com', 10.0, 0);
+            }
+
+            public function rawStream(string $path): \Psr\Http\Message\ResponseInterface
+            {
+                $this->paths[] = $path;
+                return new Response(503);
+            }
+
+            public function get(string $path, array $query = []): array
+            {
+                $this->paths[] = $path;
+                if (count($this->paths) > 2) {
+                    throw new \RuntimeException('polled again after a terminal status');
+                }
+                return ['session_id' => 'auth_abc', 'status' => 'completed_elsewhere'];
+            }
+        };
+
+        $events = iterator_to_array((new AuthSessions($http))->stream('auth_abc'), false);
+
+        $this->assertCount(1, $events);
+        $this->assertSame('terminal', $events[0]['event']);
+        $this->assertSame(
+            ['/api/v1/auth/sessions/auth_abc/events', '/api/v1/auth/sessions/auth_abc'],
             $http->paths,
         );
     }
