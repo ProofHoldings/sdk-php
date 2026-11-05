@@ -3,6 +3,33 @@
 Notable changes to `proof-holdings/sdk` on Packagist. Each version is a `vX.Y.Z` tag of
 [ProofHoldings/sdk-php](https://github.com/ProofHoldings/sdk-php).
 
+## 1.4.0 — 2026-11-05
+
+The signing-key rotation (#513), on top of 1.3.0. Code written for 1.3.0 keeps working.
+
+### Added
+
+- `$proof->proofs->token($id)`, `listReissued(DateTimeInterface|string $since, array $params = [])`
+  and `delegationToken($handle)`, returning plain arrays: the token pull of the signing-key rotation
+  (`GET /api/v1/proofs/{id}/token`, `GET /api/v1/proofs?reissued_since=`,
+  `GET /api/v1/proofs/delegation-token/{handle}`, the last a public endpoint). A proof of one of the account's own verified assets is read by the signed-in owner: with a live API key `token()` answers 403 `owner_session_required` whatever its status, `listReissued()` leaves it out and no `proof.reissued` webhook names it. The generated
+  `Types\ProofTokenResponse`, `ReissuedProofListResponse`, `ReissuedProofItem`,
+  `DelegationTokenResponse` and `JWKSTombstone`; `Types\JWK` gains the optional `proof_purpose`,
+  `not_before`, `not_after`, `max_token_lifetime` and `proof_legacy`.
+- The `proof.reissued` and `delegation.reissued` webhook events, read from the payload's `event` string.
+  `WebhookEventType` keeps the 13 cases 1.3.0 released, so `tryFrom()` answers `null` for these two: a new
+  case would break a `match` that lists every case. The cases arrive in the next major
+  (`sdks/shared/NEXT_MAJOR.md`).
+- `Types\JWKS` gains the optional `proof_tombstones` (a list of `Types\JWKSTombstone`, the revoked keys),
+  appended after `$keys`, so a call written for 1.3.0 still works.
+
+### Deprecated
+
+- Delegation `scope` (delegation schema 2.0: a delegation carries no scope): a `scope` passed to
+  `delegations->create()` is sent as is, ignored by the server and answered with a `Deprecation` header, and
+  `$scope` on the delegation types is the scope a delegation issued before schema 2.0 was stored with,
+  otherwise `[]`. Removed in the next major (`sdks/shared/NEXT_MAJOR.md`).
+
 ## 1.3.0 — 2026-11-03
 
 ### Added

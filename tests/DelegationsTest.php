@@ -23,7 +23,6 @@ class DelegationsTest extends TestCase
         $params = [
             'control_proof' => self::PH_CTL,
             'delegate' => ['type' => 'purl', 'value' => 'pkg:npm/@postmark/mcp'],
-            'scope' => ['email:send'],
         ];
         $http = $this->mockHttp();
         $http->expects($this->once())

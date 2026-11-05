@@ -8,8 +8,8 @@ use ProofHoldings\HttpClient;
 
 /**
  * Delegations — Proof of Delegation. A control-proven domain authorizes a typed
- * url/purl artifact for a set of capability scopes; the attestation is that the
- * domain's controller authorized the artifact, nothing more.
+ * url/purl artifact; the attestation is that the domain's controller authorized
+ * the artifact, nothing more.
  *
  * Responses are returned as raw arrays: the generated Types.php has no
  * DelegationWithToken/DelegationDetail classes (allOf compositions are dropped
@@ -26,7 +26,7 @@ class Delegations
      * The result carries the publishable token AND the derived effective_status/is_valid the
      * reads carry — the shape of a delegation does not depend on which verb produced it.
      *
-     * @param array<string, mixed> $params {control_proof, delegate: {type, value}, scope[], expires_in?}
+     * @param array<string, mixed> $params {control_proof, delegate: {type, value}, expires_in?, scope? (deprecated: sent as is, ignored by the server, removed in the next major)}
      * @return array<string, mixed>
      */
     public function create(array $params): array

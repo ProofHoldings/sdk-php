@@ -595,10 +595,10 @@ final class JwksRotationFixturesTest extends TestCase
     {
         $readme = (string) file_get_contents(__DIR__ . '/../README.md');
         $sections = array_values(array_filter(
-            preg_split('/^### /m', $readme),
-            static fn (string $part): bool => str_starts_with($part, 'Signing-key rotation')
+            preg_split('/^## /m', $readme),
+            static fn (string $part): bool => str_starts_with($part, "Key rotation\n")
         ));
-        $this->assertNotEmpty($sections, 'README heading "### Signing-key rotation"');
+        $this->assertNotEmpty($sections, 'README heading "## Key rotation"');
         $this->assertStringContainsString('in memory', $sections[0]);
         $this->assertStringContainsString('not persisted', $sections[0]);
         $this->assertStringContainsString('clearTombstones()', $sections[0]);

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace ProofHoldings\Resources;
 
+use DateTimeInterface;
 use ProofHoldings\HttpClient;
 use ProofHoldings\Jwks\KeySetCache;
 
@@ -100,6 +101,44 @@ class Proofs
     public function listRevoked(): array
     {
         return $this->http->get('/api/v1/proofs/revoked');
+    }
+
+    /**
+     * The current token of a proof you own, by its `ph_ctl_*` handle — after a signing-key
+     * rotation, the re-signed one. Each read is audited. A revoked or expired proof answers 410
+     * `proof_not_live`; a delegation's token is read with delegationToken(). The proof of one of
+     * the account's own verified assets answers a live API key 403 `owner_session_required`
+     * whatever its status: the signed-in owner reads it.
+     */
+    public function token(string $id): array
+    {
+        return $this->http->get('/api/v1/proofs/' . rawurlencode($id) . '/token');
+    }
+
+    /**
+     * Your proofs re-issued at or after $since, oldest first, as references: pull a `ph_ctl_*`
+     * item with token() and a `ph_dlg_*` item with delegationToken(). An API key's list leaves out
+     * the proofs of the account's own verified assets.
+     *
+     * @param DateTimeInterface|string $since A string must carry an offset (`Z` or `±hh:mm`).
+     * @param array{page?: int, limit?: int} $params
+     */
+    public function listReissued(DateTimeInterface|string $since, array $params = []): array
+    {
+        if ($since instanceof DateTimeInterface) {
+            $since = $since->format(DATE_RFC3339_EXTENDED);
+        }
+        return $this->http->get('/api/v1/proofs', ['reissued_since' => $since] + $params);
+    }
+
+    /**
+     * The current token of an active delegation, by its `ph_dlg_*` handle. Public: the token is
+     * already published with the delegation. Every handle that is not an active delegation
+     * answers the same 404.
+     */
+    public function delegationToken(string $handle): array
+    {
+        return $this->http->get('/api/v1/proofs/delegation-token/' . rawurlencode($handle));
     }
 
     /**

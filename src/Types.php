@@ -1176,7 +1176,7 @@ class DelegateIdentifier
 }
 
 /**
- * Create a delegation from a proven domain to an artifact
+ * Create a delegation from a proven domain to an artifact. Strict, like the request validator: an unknown key is rejected with `400 validation_error`; the deprecated `scope` is accepted and ignored.
  */
 class CreateDelegationRequest
 {
@@ -1252,6 +1252,28 @@ class DelegationCarriersResponse
     {
         return new self(
             carriers: array_map(static fn (array $item) => DelegationCarrier::fromArray($item), $data['carriers']),
+        );
+    }
+}
+
+/**
+ * The current token of an active delegation
+ */
+class DelegationTokenResponse
+{
+    public function __construct(
+        public readonly string $token,
+    ) {}
+
+    /**
+     * Create from API response array.
+     *
+     * @param array<string, mixed> $data
+     */
+    public static function fromArray(array $data): self
+    {
+        return new self(
+            token: $data['token'],
         );
     }
 }
@@ -3661,6 +3683,59 @@ class RefreshSessionResponse
             success: $data['success'],
             expiresAt: $data['expiresAt'],
             expiresIn: $data['expiresIn'],
+        );
+    }
+}
+
+/**
+ * A re-issued proof, by reference — never the token itself
+ */
+class ReissuedProofItem
+{
+    public function __construct(
+        public readonly string $proof_id,
+        public readonly string $reissued_at,
+        public readonly string $token_url,
+    ) {}
+
+    /**
+     * Create from API response array.
+     *
+     * @param array<string, mixed> $data
+     */
+    public static function fromArray(array $data): self
+    {
+        return new self(
+            proof_id: $data['proof_id'],
+            reissued_at: $data['reissued_at'],
+            token_url: $data['token_url'],
+        );
+    }
+}
+
+/**
+ * Your proofs re-issued at or after `reissued_since`, oldest first
+ */
+class ReissuedProofListResponse
+{
+    /**
+     * @param list<ReissuedProofItem> $data
+     */
+    public function __construct(
+        public readonly array $data,
+        public readonly PaginationResponse $pagination,
+    ) {}
+
+    /**
+     * Create from API response array.
+     *
+     * @param array<string, mixed> $data
+     */
+    public static function fromArray(array $data): self
+    {
+        return new self(
+            data: array_map(static fn (array $item) => ReissuedProofItem::fromArray($item), $data['data']),
+            pagination: PaginationResponse::fromArray($data['pagination']),
         );
     }
 }
@@ -8742,7 +8817,7 @@ class VerifiedUserListResponse
 // ============================================================================
 
 /**
- * JSON Web Key. The key-type-specific members are optional because one key set may carry both an EC and an RSA key: `crv`/`x`/`y` are present on EC keys, `n`/`e` on RSA keys.
+ * JSON Web Key. The key-type-specific members are optional because one key set may carry both an EC and an RSA key: `crv`/`x`/`y` are present on EC keys, `n`/`e` on RSA keys. A registry key also carries its family and signing window (`proof_purpose`, `not_before`, `not_after`, `max_token_lifetime`); a legacy key carries `proof_legacy` instead.
  */
 class JWK
 {
@@ -8756,6 +8831,11 @@ class JWK
         public readonly ?string $y = null,
         public readonly ?string $n = null,
         public readonly ?string $e = null,
+        public readonly ?string $proof_purpose = null,
+        public readonly ?int $not_before = null,
+        public readonly ?int $not_after = null,
+        public readonly ?int $max_token_lifetime = null,
+        public readonly ?bool $proof_legacy = null,
     ) {}
 
     /**
@@ -8775,20 +8855,51 @@ class JWK
             y: $data['y'] ?? null,
             n: $data['n'] ?? null,
             e: $data['e'] ?? null,
+            proof_purpose: $data['proof_purpose'] ?? null,
+            not_before: $data['not_before'] ?? null,
+            not_after: $data['not_after'] ?? null,
+            max_token_lifetime: $data['max_token_lifetime'] ?? null,
+            proof_legacy: $data['proof_legacy'] ?? null,
         );
     }
 }
 
 /**
- * JSON Web Key Set for offline proof verification
+ * A revoked signing key. A token signed by it is `key_revoked` — fetch a re-signed copy rather than trusting it. Kept for 365 days after `revoked_at`.
+ */
+class JWKSTombstone
+{
+    public function __construct(
+        public readonly string $kid,
+        public readonly int $revoked_at,
+    ) {}
+
+    /**
+     * Create from API response array.
+     *
+     * @param array<string, mixed> $data
+     */
+    public static function fromArray(array $data): self
+    {
+        return new self(
+            kid: $data['kid'],
+            revoked_at: $data['revoked_at'],
+        );
+    }
+}
+
+/**
+ * JSON Web Key Set for offline proof verification: every signing key still needed to verify a live token, plus the revoked ones as tombstones
  */
 class JWKS
 {
     /**
      * @param list<JWK> $keys
+     * @param list<JWKSTombstone>|null $proof_tombstones
      */
     public function __construct(
         public readonly array $keys,
+        public readonly ?array $proof_tombstones = null,
     ) {}
 
     /**
@@ -8800,6 +8911,7 @@ class JWKS
     {
         return new self(
             keys: array_map(static fn (array $item) => JWK::fromArray($item), $data['keys']),
+            proof_tombstones: isset($data['proof_tombstones']) ? array_map(static fn (array $item) => JWKSTombstone::fromArray($item), $data['proof_tombstones']) : null,
         );
     }
 }
@@ -8876,6 +8988,36 @@ class ProofStatusResponse
             suspended_at: $data['suspended_at'] ?? null,
             expires_at: $data['expires_at'] ?? null,
             is_expired: $data['is_expired'],
+        );
+    }
+}
+
+/**
+ * The current token of a proof you own. Served with `Cache-Control: no-store`; each read is audited.
+ */
+class ProofTokenResponse
+{
+    public function __construct(
+        public readonly string $proof_id,
+        public readonly string $token,
+        public readonly string $status,
+        public readonly ?string $reissued_at,
+        public readonly string $expires_at,
+    ) {}
+
+    /**
+     * Create from API response array.
+     *
+     * @param array<string, mixed> $data
+     */
+    public static function fromArray(array $data): self
+    {
+        return new self(
+            proof_id: $data['proof_id'],
+            token: $data['token'],
+            status: $data['status'],
+            reissued_at: $data['reissued_at'] ?? null,
+            expires_at: $data['expires_at'],
         );
     }
 }
@@ -9031,7 +9173,7 @@ class ValidateProofRequest
 }
 
 /**
- * Proof validation result. Returns verification details when valid, or reason/message when invalid. A DELEGATION token answers with `token_type: "delegation"` and the `delegation` block instead of `verification`; its status resolves the cascade down to the domain control proof, which neither the status list (it packs each row's own bit) nor an offline signature check can show. Delegation-specific reasons: `unknown_delegation` (no registry record — delegations are minted fail-closed, so this is invalid, not merely unresolvable), `status_unavailable`, and `identifier_unverifiable` when an `identifier` binding is requested for a delegation.
+ * Proof validation result. Returns verification details when valid, or reason/message when invalid. A DELEGATION token answers with `token_type: "delegation"` and the `delegation` block instead of `verification`; its status resolves the cascade down to the domain control proof, which neither the status list (it packs each row's own bit) nor an offline signature check can show. Delegation-specific reasons: `unknown_delegation` (no registry record — delegations are minted fail-closed, so this is invalid, not merely unresolvable), `unsupported_version` (a delegation token of a schema major the issuer no longer accepts — 1.x after 2.0; its owner re-issues it), `status_unavailable`, and `identifier_unverifiable` when an `identifier` binding is requested for a delegation.
  */
 class ValidateProofResponse
 {
